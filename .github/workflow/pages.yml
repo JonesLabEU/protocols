@@ -26,7 +26,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - run: pip install -r requirements.txt
+      - run: pip install mkdocs mkdocs-material mkdocs-git-revision-date-localized-plugin mkdocs-git-authors-plugin pymdown-extensions
       - run: mkdocs build --strict
 
       - uses: actions/upload-pages-artifact@v3
