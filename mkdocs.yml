@@ -1,0 +1,44 @@
+site_name: "Jones!Lab protocols"
+site_description: "Jones!Lab protocols"
+site_url: "https://qbilius.github.io/protocols"
+
+docs_dir: protocols
+
+theme:
+  name: "material"
+  features:
+    - navigation.indexes
+    - natigation.sections
+    - navigation.expand
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - content.action.edit
+  palette:
+    - primary: black
+  logo: favicon.png
+  favicon: favicon.png
+
+markdown_extensions:
+  - pymdownx.superfences
+  - pymdownx.blocks.tab:
+      alternate_style: true
+  - toc:
+      permalink: true
+  - attr_list
+  - pymdownx.arithmatex:
+      generic: true
+
+exclude_docs: |
+  **/*.excalidraw.md
+
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+  # - https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js
+  # - https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js
+# extra_css:
+#   - https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css
+
+# plugins:
+#   - git-revision-date-localized:
+#       enable_creation_date: true
+#   - git-authors
