@@ -6,7 +6,7 @@ Treat them as a good starting point for your experiments rather than an authorit
 
 These protocols are always evolving and may be incomplete or contain errors. If you find ways how to improve them, please edit them:
 
-- Easiest: Protocols repository on GitHub – just edit a page right on GitHub, preview changes, and commit. The site will be rebuilt automatically in a few minutes.
+- Easiest: Protocols repository on GitHub – just click on the page edit icon at the top right of a page and you'll be able to edit it right on GitHub, preview changes, and commit (of course, only if you have an account associated with the Jones!Lab). The site will be rebuilt automatically in a few minutes.
 - Most convenient: Clone the repository locally and open it with Obsidian. Obsidian makes it easy to update multiple protocols and add images (using Excalidraw plugin).
 
 More protocols are available on the following sites:
