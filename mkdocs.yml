@@ -39,6 +39,7 @@ extra_javascript:
 #   - https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css
 
 repo_url: https://github.com/JonesLabEU/protocols
+edit_uri: edit/main/protocols/
 
 plugins:
   - git-revision-date-localized:
