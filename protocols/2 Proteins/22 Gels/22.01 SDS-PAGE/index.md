@@ -58,7 +58,7 @@ Denatures proteins
 
 ## Gel preparation
 
-1. Assemble glass plates in the gel casting apparatus.
+1. Assemble clean glass plates in the gel casting apparatus. (Dirty plates will not seal properly. If the plates are clean, they can slide smoothly when rubbed together - any resistance indicates that they are not clean.)
 2. Choose the appropriate **percentage of acrylamide** for the **resolving gel** based on your protein size (see the table above) and prepare the mix (stacking gel is always 4%):
 
 /// tab | Calculations
@@ -90,12 +90,12 @@ Denatures proteins
 
 2. Pour the resolving gel mixture into the gel plates to a level **2 cm below the top** of the shorter plate. 
 3. Pour **a layer of water** over the top of the resolving gel to prevent meniscus formation in the resolving gel.
-	- The water will initially mix with the gel solution but eventually it will fractionate and you will see a faint separating line between the two layes.
-4. Allow resolving gel to stand 30 min at room temperature.
+	- The water will initially mix with the gel solution but eventually it will fractionate and you will see a faint separating line between the two layers.
+4. Allow the resolving gel to stand at room temperature until solidified (~30 min).
 5. Drain the water from top of the resolving gel and wick any remaining water away with a paper towel.
 6. Prepare the stacking gel mix.
-7. Pour stacking gel solution into gel plates (on top of the running gel), so that the gel plates are filled and a meniscus forms. Insert a comb.
-8. Allow gel to stand for at least 1 h at room temperature, or overnight at 4°C (wrapped in saran wrap or in the SDS running buffer). 
+7. Pour stacking gel solution into gel plates (on top of the running gel), so that the gel plates are filled and a meniscus forms. Insert a comb, assuring no air is trapped between the comb's teeth.
+8. Allow gel to stand at room temperature until solidified (~1 hr), or overnight at 4°C (wrapped in saran wrap or in the SDS running buffer). 
 ### Prepare samples
 1. Mix the samples (~30 ug per well) with the 4X loading dye.
 	1. 10 wells – 15 uL sample + 5 uL loading dye
