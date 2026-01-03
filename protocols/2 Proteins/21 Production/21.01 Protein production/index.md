@@ -1,7 +1,3 @@
----
-share_link: https://share.note.sx/r9u9snbh#ZSVjzLktd8TFmLxkpDuE9cLkar+Uqat5Atb+0v2P1X4
-share_updated: 2025-11-27T14:41:14+02:00
----
 # Protein production
 ## Overview
 ![|400](assets/2025-12-11_09.44.49.excalidraw.png)

@@ -40,3 +40,4 @@ All centrifuge bottles, tubes, solutions, pipets, etc. must be sterile.
 10. Proceed to plating.
 ## Resources
 - [NEB Chemical Transformation Tips](https://www.neb.com/en/tools-and-resources/usage-guidelines/chemical-transformation-tips)
+- [A comparison and optimization of methods and factors affecting the transformation of Escherichia coli \| Bioscience Reports \| Portland Press](https://portlandpress.com/bioscirep/article/33/6/e00086/55976/A-comparison-and-optimization-of-methods-and)
