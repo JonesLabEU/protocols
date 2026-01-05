@@ -99,18 +99,20 @@ Note that the protocol is set up for 8 flasks. This may seem as an overkill but 
 3. Take **1 mL of the resulting culture**, **dilute** it 10X with 9 mL of TB medium, and **measure OD600**.
 4. Take another **1 mL of the resulting culture** and **dilute** it to the same OD600 you had just prior the IPTG induction. **Put aside 1 mL** for SDS-PAGE.
 5. Pelleting:
-	1. Transfer into 4 x 500 mL **conical tubes** from 4 flasks, spin down for 12 min 4000 rpm at 4C, and discard supernatant.
+	1. Transfer into 4 x 500 mL **conical tubes** from 4 flasks, spin down for **12 min 4000 rpm** at 4C, and discard supernatant.
 		- Make sure you counterbalance them accurately by equalizing their weight.
 		- Place the remaining flasks in 4C.
-	2. Transfer the **remaining flasks** contents to the conical tubes (pouring on top of the pellet), spin down for 12 min 4000 rpm at 4C, and discard supernatant.
+	2. Transfer the **remaining flasks** contents to the conical tubes (pouring on top of the pellet), spin down for **12 min 4000 rpm** at 4C, and discard supernatant.
 	3. **Weigh** a piece of aluminum foil, scrape all pellets onto it, **weigh** again, snap freeze it with **liquid nitrogen**, and place it in **-70C** until purification.
 		- For less sensitive proteins, freezing at -20C (chest freezer) is ok.
 		- You may also use a 50 mL falcon instead of foil but it is less convenient to scrape pellet into it.
 6. Preparation for SDS-PAGE:
-	1. **Spin down** culture samples that you put aside at **6000 rpm for 2 min** and discard supernatant.
-	2. Resuspend with a small amount of Milli-Q and measure the total volume by aspiring with pipette.
-	3. Add the correct proportion of **4X SDS loading dye** and heat at **98C for 5 min**.
-	4. Freeze to -20C or run SDS-PAGE immediately.
+	1. Split each 1 mL sample that you put aside into 100 uL and 900 uL.
+	2. **Spin down** the samples at **3500 g for 2 min** and discard supernatant.
+	3. Resuspend with a small amount of Milli-Q and measure the total volume by aspiring with pipette.
+	4. Add the correct proportion of **4X SDS loading dye** and heat at **98C for 5 min**.
+		- The samples should be fairly homogeneous. If you get a viscous clump instead, you may have sampled too much culture and got too much genomic DNA. Do not use such concentrated samples for SDS-PAGE as they will not run properly.
+	5. Freeze to -20C or run SDS-PAGE immediately.
 ## Resources
 - [Protein Expression Protocol \| Popa Lab](https://popalab.uwm.edu/protein-expression-protocol/)
 - [Regulating the T7 RNA polymerase expression in E. coli BL21 (DE3) to provide more host options for recombinant protein production \| Microbial Cell Factories](https://link.springer.com/article/10.1186/s12934-021-01680-6)
