@@ -47,7 +47,7 @@
 		- Methanol can be reused, so don't throw it away at the end.
 	5. Take out the SDS-PAGE gel, **cut off the stacking part** of it, and **soak the resolving part** in the **1X Transfer buffer**.
 		- This step replaces SDS running buffer with the transfer buffer.
-2. **Sandwiching:**
+2. **Transfer (fast semi-dry method):**
 	1. Soak the **Wattman** paper in the **1X Transfer buffer** and place two consecutive papers on top of each other, and on a special white plate.
 	2. Soak the **PVDF** membrane in **methanol**.
 		- Make sure it is submerged and when you take it out, do not let it dry!    
@@ -56,7 +56,10 @@
 	4. Place the SDS **gel** on the **PVDF** membrane and gently roll out any bubbles with a roller.
 	5. Place two more **Wattman** papers soaked in the **1X Transfer buffer**.    
 	6. Pour the leftover 1X Transfer buffer on the top of the last paper sheet.
-	7. Put on the other (metal) plate, gently press down until you hear a click sound, and place it in the machine. Run on a high molecular weight program for 10 min.
+	7. Put on the other (metal) plate, gently press down until you hear a click sound, and place it in the machine.
+    8. Choose a present program or set your own.
+        - For smaller proteins, 25 V / 1.3 A for 10 min is a typical setting.
+		- For larger proteins, consider extending run time to 30 min for an increased protein transfer.
 3. **Blocking:**
 	1. Transfer the PVDF membrane to a clean box with a **blocking solution** in it and gently shake on a shaker for at least **30 min**.
 		- Longer blocking will reduce sensitivity while short blocking will increase background.
@@ -72,3 +75,6 @@
 	2. Have a document folder ready (cut it smaller and make it so it could open like a book so you could add the gel inside) and place the membrane inside of the folder before imaging.    
 	3. Image first with chemiluminescent setting on a dark plate for blotting, then image with the "fast blast" (white light) setting to get the ladder.
 		- You may need to manually choose the exposure instead of the auto-exposure. Go for the highest or second-to-highest resolution.
+
+## Resources
+- [ThermoFisher Pierce Power Station manual](https://assets.fishersci.com/TFS-Assets/LSG/manuals/22830_22830SPCL_power_blotterstainersystem_UG.pdf)
