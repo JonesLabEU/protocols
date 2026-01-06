@@ -31,6 +31,7 @@ Note that the protocol is set up for 8 flasks. This may seem as an overkill but 
 |     | Cuvette                                                            | 1 mm   | 5        | OD measurements              |
 |     | Eppendorf microtube                                                | 1.5 mL | 2        | Culture samples for SDS PAGE |
 
+
 ### Reagents
 - CHL – 8 x 400 uL -> 3.5 mL
 - CB – 8 x 400 uL -> 3.5 mL
@@ -103,9 +104,9 @@ Note that the protocol is set up for 8 flasks. This may seem as an overkill but 
 		- Make sure you counterbalance them accurately by equalizing their weight.
 		- Place the remaining flasks in 4C.
 	2. Transfer the **remaining flasks** contents to the conical tubes (pouring on top of the pellet), spin down for **12 min 4000 rpm** at 4C, and discard supernatant.
-	3. **Weigh** a piece of aluminum foil, scrape all pellets onto it, **weigh** again, snap freeze it with **liquid nitrogen**, and place it in **-70C** until purification.
-		- For less sensitive proteins, freezing at -20C (chest freezer) is ok.
-		- You may also use a 50 mL falcon instead of foil but it is less convenient to scrape pellet into it.
+	3. Store the conocals upright at **-20C overnight**.
+		- Alternatively, for more sensitive proteins, consider snap-freezing in liquid nitrogen and storing in **-70C**. However, in this case you'll need to scrape the pellet into a 50 mL falcon, which is a messy process and you lose some pellet, and then taking the pellet out when you start purification becomes more cumbersome as well.
+	4. **Weigh** a piece of **aluminum foil**, then place the conicals upside down under running room temperature water for the pellet to fall out, and place each pellet on the foil. Store at **-20C**.
 6. Preparation for SDS-PAGE:
 	1. Split each 1 mL sample that you put aside into 100 uL and 900 uL.
 	2. **Spin down** the samples at **3500 g for 2 min** and discard supernatant.
