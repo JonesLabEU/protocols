@@ -6,14 +6,14 @@
 - Also known as immunoblotting.
 - Named as a play of words on Southern blotting (for DNA visualization) that was developed by Edwin Southern, thus spelled with a lowercase "w".
 - Main steps:
-	1. Transfer protein from a gel to a membrane by applying electric current.
+	1. **Transfer** protein from a gel to a membrane by applying electric current.
 		1. Proteins are coated with SDS and thus have a negative charge.
 		2. The membrane goes under the gel, soaked filter paper is placed above and below, and the whole thing is sandwiched between two electrode plates with a positive electrode below.
-	2. Block protein on the membrane with BSA or skimmed milk powder to prevent non-specific binding.
-	3. Probing:
+	2. **Block** (passivate) membrane with BSA or skimmed milk powder to prevent non-specific antibody binding.
+	3. **Probe**:
 		1. Treat with primary antibody that specifically binds to your protein.
 		2. Treat with a secondary antibody that binds to the primary antibody and allows to visualize it. Sometimes primary antibodies are already ready for imaging though.
-	4. Image.
+	4. **Image**.
 - Recommended to run SDS-PAGE with a prestained protein ladder so that you can see if the band you get is in the correct place.
 
 ## Reagents
@@ -68,10 +68,10 @@
 		- If you know you will do this again, pour off the blocking solution with the antibody and freeze it in -20C for further use.    
 	3. Repeat **3 times**: Pour 10 mL of the  **1X Wash buffer** on the membrane and gently rock for **10 minutes**.
 4. **Imaging:**
-	1. Add **750 uL** of chemiluminescence reagents ([SuperSignal™ West Femto Maximum Sensitivity Substrate](https://www.thermofisher.com/order/catalog/product/34096)) from each of the two bottles.
+	1. Add **750 uL** of chemiluminescence reagents ([SuperSignal™ West Femto Maximum Sensitivity Substrate](https://www.thermofisher.com/order/catalog/product/34096)) from each of the two bottles (peroxide and luminol).
 	    - This step is performed in front of the imager – do not wait a long time after adding the reagents.
 	    - There is no need to rock it for long, just rock it in your hands for 10-15 seconds and then proceed with imaging.
-	    - HRP uses H2O2 to oxidize luminol, which then emits blue light (425 nm).
+	    - HRP (horseradish peroxidase) uses H2O2 to oxidize luminol, which then emits blue light (425 nm).
 	2. Have a document folder ready (cut it smaller and make it so it could open like a book so you could add the gel inside) and place the membrane inside of the folder before imaging.    
 	3. Image first with chemiluminescent setting on a dark plate for blotting, then image with the "fast blast" (white light) setting to get the ladder.
 		- You may need to manually choose the exposure instead of the auto-exposure. Go for the highest or second-to-highest resolution.
