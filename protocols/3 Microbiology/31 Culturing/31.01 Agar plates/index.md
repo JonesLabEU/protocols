@@ -1,6 +1,7 @@
 # Agar plates
 ## Overview
 Required volumes:
+
 - For a small Petri dish (90 mm): ~20 mL of agar mix
 - For a big plate (150 mm): ~50 mL of agar mix
 ## Steps
