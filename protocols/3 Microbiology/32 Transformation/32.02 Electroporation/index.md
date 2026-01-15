@@ -32,6 +32,7 @@ Cell membrane does not pass current, thus subjecting cells to high voltage tempo
 | 10% glycerol | 2         | 48            |
 | 10% glycerol | 2         | 48            |
 | 10% glycerol | .7        |               |
+
 10. Distribute the cells in aliquots of 50 uL and snap-freeze in liquid nitrogen:
 	1. Keep aliquots on ice. Put them by the -70C fridge.
 	2. Get liquid nitrogen from V132 (requires card) in a dewar.
