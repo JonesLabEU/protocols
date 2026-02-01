@@ -82,7 +82,7 @@ A schematic tracking all sequences and their orientations:
 | Final preparation | [C3]                        | 19        |          | [C3] x 19   |                                      |
 
 ### <span style="background-color:green">End repair (90 min)</span>
-1. Get sample concentrations using Qubit High Sensitivity kit and record them in the Sampel Tracking Sheet.
+1. Get sample concentrations using Qubit High Sensitivity kit and record them in the Sample Tracking Sheet.
 2. Transfer between .5 ng and 1 ug (ideal) of DNA to PCR tubes and adjust volume to 50 uL with Milli-Q.
 3. Prepare master mix **on ice** in a <span style="background-color:skyblue">.5 mL LoBind tube</span> and pipette it **gently** up and down:
 
@@ -117,9 +117,9 @@ A schematic tracking all sequences and their orientations:
 
 | DNA amount (ng) | Dilution |
 | --------------- | -------- |
-| <5              | 25       |
-| 5-100           | 10       |
-| 101-1000        | 1        |
+| <5              | 25X       |
+| 5-100           | 10X       |
+| 101-1000        | No dilution        |
 
 5. Add **2.3 uL of NEBNext Adaptor (diluted, Step 4)** to each sample, pipette up and down **gently** and spin down.
 6. **Incubate for 15 min** at room temperature or an open-lid thermocycler set to 20C.
