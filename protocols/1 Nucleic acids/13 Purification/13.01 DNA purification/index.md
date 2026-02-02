@@ -5,6 +5,7 @@ Typically, we purify DNA using DNA/plasmid/gel purification kits. However, in sp
 Nucleic acids are polar due to a PO4- group along the sugar backbone and thus are hydrophilic. Positively charged salt ions neutralize PO4-, making nucleic acids much less hydrophilic, resulting in precipitation. Moreover, ethanol increases electrostatic interactions between PO4- and salt ions (due to a lower dielectric constant).
 
 **Salt choices:**
+
 - DNA:
 	- Regular and large: **3 M Na acetate**
 	- Small and low concentration: also add **MgCl2** (final concentration: .01 M)
@@ -14,6 +15,7 @@ Nucleic acids are polar due to a PO4- group along the sugar backbone and thus ar
 	- **LiCl** – note that Cl- inhibits DNA polymerase and protein synthesis
 	- **5 M NH4 acetate to remove NTPs/dNTPs** (e.g., after in vitro transcription), but won't work with T4 polynucleotide kinase reactions
 	- Adding 20 ng of glycogen can help for small amounts of RNA
+
 ### Procedure
 1. Mix the following:
 
