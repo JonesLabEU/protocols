@@ -16,13 +16,13 @@ It should look like this:
 
 where:
 
-- **P5:** AAT GAT ACG GCG ACC ACC GA TCT – attaches to the flowcell during sequencing;
+- **P5:** AAT GAT ACG GCG ACC ACC GAG ATC T – attaches to the flowcell during sequencing;
 - **SP1:** A CAC TCT TTC CCT ACA CGA CGC TCT TCC GAT CT (Read 1 Sequencing Primer);
 - **Plasmid site 2':** A reverse complement of the site on the plasmid where the primer attaches.
 
 Thus, the sequence is:
 
-AAT GAT ACG GCG ACC ACC GA GA TCT - A CAC TCT TTC CCT ACA CGA CGC TCT TCC GAT CT - ...
+AAT GAT ACG GCG ACC ACC GAG ATC T - A CAC TCT TTC CCT ACA CGA CGC TCT TCC GAT CT - ...
 ### Reverse primer
 It should look like this:
 
@@ -32,11 +32,13 @@ where:
 
 - **P7:** CAA GCA GAA GAC GGC ATA CGA GAT – attaches to the flowcell during sequencing;
 - **Barcode:** A unique identifier to know which sample was yours in a pooled sequencing; must be unique across all samples that are submitted for sequencing;
-- **SP2':** CAA GCA GAA GAC GGC ATA CGA GAT (Read 2 Sequencing Primer) – a reverse complement of the SP2 sequence.
+- **GT:** *optional* barcode extension to have an 8-letter barcode;
+- **SP2':** G ACT GGA GTT CAG ACG TGT GCT C (Read 2 Sequencing Primer) – a reverse complement of the SP2 sequence.
 
 Thus, the sequence is (assuming the barcode is TGT ATT):
 
-CAA GCA GAA GAC GGC ATA CGA GAT - **TGT ATT** - GTG ACT GGA GTT CAG ACG TGT GCT C - ...
+CAA GCA GAA GAC GGC ATA CGA GAT - **TGT ATT** - GT - G ACT GGA GTT CAG ACG TGT GCT C - ...
+
 ### Design details
 - You want to have primers end with **one or two G's or C's**, but not more.
 - Check in Benchling for primer dimers. If **delta G < -7 kcal/mol**, this is already becoming risky.
@@ -56,7 +58,7 @@ Final sequences that we submit for sequencing:
 
 where:
 
-- P5: AAT GAT ACG GCG ACC ACC GA – attaches to the flowcell during sequencing;
+- P5: AAT GAT ACG GCG ACC ACC GAG ATC T – attaches to the flowcell during sequencing;
 - SP1: A CAC TCT TTC CCT ACA CGA CGC TCT TCC GAT C**T** (Read 1 Sequencing Primer);
 - SP2: GAC TGG AGT TCA GAC GTG TGC TCT TCC GAT C**T** (Read 2 Sequencing Primer);
 - P7: CAA GCA GAA GAC GGC ATA CGA GAT – attaches to the flowcell during sequencing.
