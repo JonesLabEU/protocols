@@ -61,14 +61,14 @@ NaCl or KCl concentrations above 150 mM and T3 RNA Polymerase at above 250 mM.
 
 1. Make a 10X transcription buffer:
 
-| Component                       | Amount (uL)                                | Final conc. (mM) | Stock conc. |
-| ------------------------------- | ------------------------------------------ | ---------------- | ----------- |
-| Milli-Q                         | =b7 - sum(b3:b6)                           |                  |             |
-| Tris-HCl, pH 8.0 (M)            | =b7 \* (+1c+0r) / (1000 \* (+2c+0r)) \* 10 | 40               | 1           |
-| MgCl2 (M)                       | =b7 \* (+1c+0r) / (1000 \* (+2c+0r)) \* 10 | 20               | 1           |
-| Spermidine (M)                  | =b7 \* (+1c+0r) / (1000 \* (+2c+0r)) \* 10 | 1                | .5          |
-| RiboLock RNase Inhibitor (U/uL) | =b7 \* (+1c+0r) / (+2c+0r) \* 10           | 1                | 40          |
-| **Total**                       | **100**                                    |                  |             |
+| Component                       | Amount (uL) | Working conc. (mM) | Stock conc. |
+| ------------------------------- | ----------- | ------------------ | ----------- |
+| Milli-Q                         | 13.44       |                    |             |
+| Tris-HCl, pH 8.0 (M)            | 4           | 400                | 1           |
+| MgCl2 (M)                       | 20          | 200                | 1           |
+| Spermidine (M)                  | 1.56        | 100                | .5          |
+| RiboLock RNase Inhibitor (U/uL) | 25          | 10                 | 40          |
+| **Total**                       | **100**     |                    |             |
 
 2. Mix the following components at room temperature.
 	- Add up to 11 uL of the template DNA, filling the remaining volume with RNAse-free water.
@@ -77,19 +77,19 @@ NaCl or KCl concentrations above 150 mM and T3 RNA Polymerase at above 250 mM.
 	- Reaction can be scaled either by adding more concentrated DNA template or by scaling reaction volume.
 	- Free RNA polymerase might be added later in the reaction to increase the yield.
 
-| Component                        | Amount (uL)      | Stock conc. | Final. conc.                |
-| -------------------------------- | ---------------- | ----------- | --------------------------- |
-| 10X Transcription buffer         | =b12 / 10        | 10          | =(-2c+0r) \* (-1c+0r) / b12 |
-| ATP (mM)                         | 1                | 100         | =(-2c+0r) \* (-1c+0r) / b12 |
-| CTP (mM)                         | 1                | 100         | =(-2c+0r) \* (-1c+0r) / b12 |
-| GTP (mM)                         | 1                | 100         | =(-2c+0r) \* (-1c+0r) / b12 |
-| UTP (mM)                         | 1                | 100         | =(-2c+0r) \* (-1c+0r) / b12 |
-| DTT (mM)                         | 1                | 100         | =(-2c+0r) \* (-1c+0r) / b12 |
-| DNA template                     |                  |             |                             |
-| Inorganic pyrophosphatase (U/uL) | 1                | .1          | =(-2c+0r) \* (-1c+0r) / b12 |
-| T7 RNA polymerase (U/uL)         | 1                | 20          | =(-2c+0r) \* (-1c+0r) / b12 |
-| RNAse-free dH2O                  | =b12-sum(b2:b10) |             |                             |
-| **Total**                        | **20**           |             |                             |
+| Component                        | Amount (uL) | Stock conc. | Final. conc. |
+| -------------------------------- | ----------- | ----------- | ------------ |
+| 10X Transcription buffer         | 2           | 10          | 1            |
+| ATP (mM)                         | 1           | 100         | 5            |
+| CTP (mM)                         | 1           | 100         | 5            |
+| GTP (mM)                         | 1           | 100         | 5            |
+| UTP (mM)                         | 1           | 100         | 5            |
+| DTT (mM)                         | 1           | 100         | 5            |
+| DNA template                     |             |             |              |
+| Inorganic pyrophosphatase (U/uL) | 1           | .1          | .01          |
+| T7 RNA polymerase (U/uL)         | 1           | 20          | 1            |
+| RNAse-free dH2O                  | 11          |             |              |
+| **Total**                        | **20**      |             |              |
 
 3.  Incubate for 2-16 h at 37C.
 4. *(Optional)* If you want to remove DNA template, add 1 uL DNAse I and incubate at 37C for 30 min.
@@ -115,17 +115,17 @@ Required **template DNA**: .5-2 pmol. Typically this translates into the followi
 	- **Ribonucleotide solutions (ATP/CTP/GTP/UTP):** thaw, vortex, spin down, and keep **on ice.**
 3. Combine the following reaction components **at** **room temperature** in the order given:
 
-| Reagent             | uL                           | ng/uL | pmol |
-| ------------------- | ---------------------------- | ----- | ---- |
-| Nuclease-free water | =b10 - sum(b3:b9)            |       |      |
-| ATP solution        | 2                            |       |      |
-| CTP solution        | 2                            |       |      |
-| GTP solution        | 2                            |       |      |
-| UTP solution        | 2                            |       |      |
-| 10X Reaction Buffer | 2                            |       |      |
-| Template DNA        | =(+2c+0r)/(+1c+0r)\*2912/1.6 | 113.3 | .5   |
-| Enzyme Mix          | 2                            |       |      |
-| **Total**           | 20                           |       |      |
+| Reagent             | uL              |
+| ------------------- | --------------- |
+| Nuclease-free water | to 20           |
+| ATP solution        | 2               |
+| CTP solution        | 2               |
+| GTP solution        | 2               |
+| UTP solution        | 2               |
+| 10X Reaction Buffer | 2               |
+| Template DNA        | between 1 and 8 |
+| Enzyme Mix          | 2               |
+
 
 4. Gently flick the tube, spin down briefly, and **incubate in a thermocycler at 37°C for 2-4 h**. For short (≤500 bp) transcripts incubate **4-6 h** and **up to 16 h**.
 5. Add **1 μL (2U) [TURBO DNase**](https://assets.thermofisher.com/TFS-Assets%2FLSG%2Fmanuals%2F4393900B.pdf), mix well and incubate **30 min at 37°C**
