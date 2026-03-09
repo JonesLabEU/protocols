@@ -2,6 +2,7 @@
 ## Common dyes
 ### Bromophenol blue
 ![|150](../../../0%20General/02%20Reagents/02.01%20Common%20chemicals/assets/image-8.png)
+
 - 3′,3″,5′,5″-tetrabromophenolsulfonphthalein (BPB)
 - Below pH 3.5: yellow
 - Above pH 4.6: blue
@@ -10,6 +11,7 @@
 - 2% agarose gel in TAE or TBE: co-migrates with 150 bp DNA
 ### Xylene cyanol 
 ![|150](../../../0%20General/02%20Reagents/02.01%20Common%20chemicals/assets/image-9.png)
+ 
  - 1% agarose gel: co-migrates with 4-5k bp DNA
  - 6% polyacrylamide gel: co-migrates with 140 bp DNA
  - 20% denaturating (7 M urea) PAGE: 25 bp DNA

@@ -2,6 +2,7 @@
 ## TriTrack
 [Source](https://assets.thermofisher.com/TFS-Assets/LSG/manuals/MAN0013168_6X_TriTrack_DNA_Loading_Dye_UG.pdf)
 ![|150](assets/image-1.png)
+
 - Contents:
 	- 10 mM Tris-HCl (pH 7.6)
 	- 0.03 % bromophenol blue
@@ -14,6 +15,7 @@
 	- Native PAGE
 ## Gel Loading Buffer II
 [Source](https://assets.thermofisher.com/TFS-Assets%2FLSG%2Fmanuals%2Fsp_8547.pdf)
+
 - 1-2X solution
 - Contents:
 	- 95% Formamide
@@ -31,6 +33,7 @@ Protocol:
 4. Load directly (while still hot) on the gel.
 ## RNA Loading Dye
 [Source](https://www.neb.com/en/protocols/0001/01/01/protocol-for-denaturing-page-urea-or-denaturing-agarose-gel-b0363)
+
 - 2X
 - Contents:
 	- 47.5% Formamide
