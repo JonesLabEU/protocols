@@ -73,7 +73,7 @@ A good gel should look like this:
 	- **Native: 35 min at 200 V**
 	- **Denaturing: 35 min at 200 V.** Bromophenol blue migrates with ~20 nt and will be at very bottom of the gel
 10. Take off the smaller glass using a green plastic wedge, place into water or buffer to rehydrate it, then slice with the green wedge by the sides of the gel and carefully take if off.
-11. Proceed to [index](../12.06%20Staining/index.md)
+11. Proceed to [Staining](../12.06%20Staining/index.md).
 
 ## Troubleshooting
 ### Uneven bands

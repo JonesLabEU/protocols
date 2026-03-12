@@ -33,11 +33,23 @@
 5. **Image the gel:**
 	- GelDoc device in the 3rd floor lab, or
 	- Typhoon in the hallway:
-		- Choose you dye from the drop-down menu in the Fluorescence panel (typically, SYBR Gold)
-		- Start with 400 V.
-		- If you cannot see anything or the image is in thew range, increase the voltage (up to 1000V), which increases laser's power. If still nothing is visible, edit the protocol to use Bi-Alkali regime (instead of)
-		- Conversely, if everything is saturated or in the high range, decrease the voltage.
-		- Pixel size is linked to imaging speed. Lower pixel size gives you a better resolution but a longer scan time.
+		1. Select Fluorescence tab.
+		2. Choose your **dye** from the drop-down menu in the Fluorescence panel (typically, SYBR Gold).
+		3. Set **PMT (V) to Auto**.
+		4. On the grid, select the area where the gel was placed.
+		5. Select the **folder** where you want **images saved**. **Tif format** is sufficient and can be processed with ImageJ (see below). Other formats can be handy for other analysis programs.
+		6. Default pixel size is 100 um and is linked to imaging speed. Smaller pixel size results in a better resolution but a longer scan time.
+		7. Click **Scan**. You'll hear the machine making noises and a minute later a coarse image will flash on the screen. After that, the final image will start being scanned. For an area A-D 1-3, the whole process takes 6 min.
+		8. The image is saved automatically to the destination folder. You may change intensity in the app but your changes do not get saved to the file.
+		9. If you cannot see anything or band are faint, note the voltage that was automatically determined (left size of the image), go back to the Fluorescence tab and increase the voltage 100-200 V (up to 1000V), which increases laser's power. Start a new scan. Note that the imaging results will disappear from the program the moment you swtich tabs (but the image is still safely saved and will not get overwritten by a new scene.)
+6. **Analyze the image:**
+	1. Download and install [ImageJ](https://imagej.net/ij/download.html).
+	2. Open the tif image with ImageJ.
+	3. Click Process > Math > Log.
+	4. Select the region with the tracks of your samples and ladder, starting just above the bottom of a well and ending at the bottom of a well.
+	5. Crop: Image > Crop.
+	6. Adjust contrast: Image > Adjust > Brightness/Contrast... Select Auto. If the gel still doesn't look good (bands too faint or oversaturated), correct manually.
+	7. Click File > Save As > Jpeg...
 ## Troubleshooting
 - Wide streaks instead of narrow bands: sample overloaded
 - Large blobs with shades of dye (after imaging):
