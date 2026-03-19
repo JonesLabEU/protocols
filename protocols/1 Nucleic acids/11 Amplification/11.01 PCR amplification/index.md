@@ -45,21 +45,21 @@
 | 1     | Initial denaturation | 98               | 30 s - 5 min | 1      |                                                                                       |
 | 2     | Denaturation         | 98               | 5-10 s       | 25-35  | Fewer cycles lead to less bias (but lower yield too) in the DNA library amplification |
 |       | Annealing            | 50-72            | 10-30 s      |        | Compute based on Tm. When 72C, called "2-step PCR".                                   |
-|       | Extension            | 72               | 15-90 s      |        |                                                                                       |
+|       | Extension            | 72               | 15-90 s/kb   |        |                                                                                       |
 | 3     | Final extension      | 72               | 2 min        | 1      |                                                                                       |
 |       | Incubation           | 4                | Hold         | Hold   |                                                                                       |
 ///
 
 /// tab | Common setup for Phusion™ Plus
 
-| Stage | Cycle step           | Temperature (°C) | Time  | Cycles |
-| ----- | -------------------- | ---------------- | ----- | ------ |
-| 1     | Initial denaturation | 98               | 30 s  | 1      |
-| 2     | Denaturation         | 98               | 5 s   | 30     |
-|       | Annealing            | 60               | 10 s  |        |
-|       | Extension            | 72               | 30 s  |        |
-| 3     | Final extension      | 72               | 2 min | 1      |
-|       | Incubation           | 4                | Hold  | Hold   |
+| Stage | Cycle step           | Temperature (°C) | Time    | Cycles |
+| ----- | -------------------- | ---------------- | ------- | ------ |
+| 1     | Initial denaturation | 98               | 30 s    | 1      |
+| 2     | Denaturation         | 98               | 5 s     | 30     |
+|       | Annealing            | 60               | 10 s    |        |
+|       | Extension            | 72               | 30 s/kb |        |
+| 3     | Final extension      | 72               | 2 min   | 1      |
+|       | Incubation           | 4                | Hold    | Hold   |
 
 ///
 ## Expected yield
