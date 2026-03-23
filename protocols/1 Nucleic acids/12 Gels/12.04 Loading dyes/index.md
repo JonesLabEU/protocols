@@ -1,4 +1,9 @@
 # Loading dyes
+Loading dyes are mixed this samples to pull them down into a well in a gel and to visually track migration during electrophoresis.
+
+When using **fluorescently-labelled (Cy3, Cy5)** samples, make sure the tracking dyes do not co-migrate with your sample, otherwise you may be unable to tell if a resulting band originates from your sample or the dye.
+
+For **native PAGE**, do not use dyes that contain **SDS** as they may separate double-stranded nucleic acids.
 ## TriTrack
 [Source](https://assets.thermofisher.com/TFS-Assets/LSG/manuals/MAN0013168_6X_TriTrack_DNA_Loading_Dye_UG.pdf)
 ![|150](assets/image-1.png)
