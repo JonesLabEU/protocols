@@ -33,10 +33,14 @@ Note that the protocol is set up for 8 flasks. This may seem as an overkill but 
 
 
 ### Reagents
-- CHL – 8 x 400 uL -> 3.5 mL
-- CB – 8 x 400 uL -> 3.5 mL
-- 1 M IPGT – 8 x 40 uL -> 350 uL
-### TB media
+
+| Component | Per flask (uL) | # flasks | Total (mL) |
+| --------- | -------------- | -------- | ---------- |
+| CHL       | 400            | 8        | 3.5        |
+| CB        | 400            | 8        | 3.5        |
+| 1 M IPTG  | 40             | 8        | 0.35       |
+
+### TB medium
 
 | Component     | Amount to get | Final conc. (g/L) |
 | ------------- | ------------- | ----------------- |
