@@ -46,8 +46,7 @@ An easy way to prepare samples for NGS is to amplify your DNA with primers that 
 	- Must be unique across all samples that are submitted for sequencing.
 	- This sequence is a **reverse complement** to the barcode that you provide to the sequencing service and what you would actually see in your reads.
 	- If you need an **8 nt index** but already have oligos with a 6 nt index, add **AT from P7**, meaning that i7' is ATNNNNNN, and thus the barcode to expect during sequencing is N'N'N'N'N'N'AT.
-- **SP2:** GTGACTGGAGTTCAGACGTGTGCTC-TTCCGATCT
-	- The last 9 nt (after the dash) are optional in this design
+- **SP2:** GTGACTGGAGTTCAGACGTGTGCTCTTCCGATCT
 - **PCR primer site 2:** Primer for amplifying your DNA sequence from your plasmid.
 ### PCR primer design details
 - You want to have primers end with **one or two G's or C's**, but not more.
