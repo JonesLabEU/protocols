@@ -97,13 +97,13 @@ Source: [Massively parallel kinetic profiling of natural and engineered CRISPR n
 
 1. Prepare 980 uL of all ingredients except DTT that is not stable in solution and should be added each time from stock aliquots or fresh preparation.
 
-| Component          | Input vol. (uL) | Stock conc. (M) | Final conc. (M) |
-| ------------------ | --------------- | --------------- | --------------- |
-| **HEPES** (pH 7.5) | 200             | 1               | 200             |
-| **KCl**            | 500             | 3               | 1500            |
-| **MgCl2**          | 100             | 1               | 100             |
-| **Water**          | 180             |                 |                 |
-| **Total**          | **980**         |                 |                 |
+| Component          | Input vol. (uL) | Stock conc. (M) | Final conc. (mM) |
+| ------------------ | --------------- | --------------- | ---------------- |
+| **HEPES** (pH 7.5) | 200             | 1               | 200              |
+| **KCl**            | 500             | 3               | 1500             |
+| **MgCl2**          | 100             | 1               | 100              |
+| **Water**          | 180             |                 |                  |
+| **Total**          | **980**         |                 |                  |
 
 2. Check that the mix has a pH around 7.5. If not, adjust with KOH / HCl.
 3. Prepare 1 M DTT:
