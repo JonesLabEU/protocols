@@ -1,0 +1,1459 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='UTF-8'>
+<title>Gel Band Quantifier</title>
+<script src='https://cdn.jsdelivr.net/npm/utif@3.1.0/UTIF.js'></script>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 18px; color: #222; background: #fafafa; max-width: 1400px; }
+  h1 { font-size: 18px; font-weight: 500; margin: 0 0 10px; }
+  .toolbar, .controls-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; padding: 8px 12px; background: white; border-radius: 6px; border: 1px solid #ddd; }
+  .controls-row { gap: 18px; }
+  .ctrl-group { display: flex; gap: 6px; align-items: center; flex-wrap: nowrap; }
+  button { font-size: 13px; padding: 5px 10px; cursor: pointer; background: white; border: 1px solid #ccc; border-radius: 4px; }
+  button:hover { background: #f0f0f0; }
+  button.active { background: #185FA5; color: white; border-color: #185FA5; }
+  .lbl { font-size: 12px; color: #666; margin: 0 4px 0 8px; }
+  .spacer { flex: 1; }
+  #filename-display { font-size: 12px; color: #444; font-style: italic; margin-left: 8px; }
+  #cv { display: block; image-rendering: pixelated; }
+  #svg { position: absolute; top: 0; left: 0; display: block; user-select: none; }
+  #svg text { user-select: none; pointer-events: none; }
+  #pcv { display: none; width: 100%; height: 140px; margin-top: 12px; background: white; border: 1px solid #ccc; border-radius: 6px; cursor: default; user-select: none; }
+  #pcv text { user-select: none; pointer-events: none; }
+  .popup { position: absolute; display: none; z-index: 100; background: rgba(20,20,20,0.92); border-radius: 4px; padding: 3px; gap: 2px; flex-direction: row; }
+  .popup.show { display: flex; }
+  .popup button { background: rgba(255,255,255,0.12); border: none; color: white; padding: 3px 7px; border-radius: 3px; cursor: pointer; font-size: 11px; }
+  .popup button:hover { background: rgba(255,255,255,0.28); }
+  #tip { position: absolute; display: none; pointer-events: none; background: rgba(20,20,20,0.92); color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-family: monospace; z-index: 200; }
+  #bg-controls { display: none; gap: 16px; align-items: center; flex-wrap: wrap; margin-top: 8px; padding: 8px 12px; background: white; border-radius: 6px; border: 1px solid #ddd; }
+  #bg-controls fieldset { border: none; padding: 0; margin: 0; display: flex; gap: 12px; align-items: center; }
+  #bg-controls legend { font-size: 12px; color: #666; margin-right: 6px; padding: 0; float: left; }
+  #bg-controls label { font-size: 13px; cursor: pointer; }
+  #bg-controls input[type=radio] { margin-right: 3px; vertical-align: middle; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; background: white; border: 1px solid #ddd; }
+  th, td { padding: 6px 10px; text-align: right; border-bottom: 1px solid #eee; font-variant-numeric: tabular-nums; }
+  th { background: #f0f0f0; font-weight: 500; }
+  input[type=range] { vertical-align: middle; }
+  #err { color: #c00; font-size: 13px; margin: 6px 0; min-height: 18px; }
+  #prompt { padding: 60px 20px; text-align: center; color: #999; font-size: 14px; }
+  #prompt small { display: block; margin-top: 8px; font-size: 12px; }
+  /* Gel area: wrap + levels panel side by side */
+  #gel-area { display: flex; gap: 0; align-items: stretch; }
+  #gel-area.no-levels #wrap { border-radius: 6px; border: 1px solid #ccc; }
+  #wrap { position: relative; overflow: auto; background: #eee; border: 1px solid #ccc; border-radius: 6px 0 0 6px; max-height: 70vh; flex: 1; }
+  #levels-panel { display: flex; flex-direction: column; align-items: center; width: 36px; background: #f0f0f0; border: 1px solid #ccc; border-left: none; border-radius: 0 6px 6px 0; padding: 6px 0 4px; flex-shrink: 0; position: relative; box-sizing: border-box; overflow: hidden; }
+  #levels-cv { width: 14px; border-radius: 3px; cursor: default; display: block; flex-shrink: 0; }
+  #levels-handles { position: absolute; left: 0; right: 0; top: 0; bottom: 0; pointer-events: none; }
+  .lvl-handle { position: absolute; left: 3px; right: 3px; height: 8px; background: white; border: 1.5px solid #444; border-radius: 3px; cursor: ns-resize; pointer-events: all; box-shadow: 0 1px 3px rgba(0,0,0,0.3); transform: translateY(-50%); }
+  .lvl-handle::after { content: ''; display: block; margin: 2px auto 0; width: 10px; height: 2px; background: #999; border-radius: 1px; }
+  #levels-auto-btn { font-size: 11px; font-weight: bold; padding: 1px 4px; margin-top: 4px; border: 1px solid #ccc; border-radius: 3px; background: white; cursor: pointer; color: #555; flex-shrink: 0; }
+  #levels-auto-btn:hover { background: #e8e8e8; }
+</style>
+</head>
+<body>
+<h1>Gel Band Quantifier</h1>
+
+<div class='toolbar'>
+  <button onclick="document.getElementById('fi').click()">Load gel</button>
+  <input type='file' id='fi' accept='.tif,.tiff,.svg,image/tiff,image/svg+xml' style='display:none'>
+  <button onclick='exportSVG()'>Save annotated gel</button>
+  <button id='btn-copy' onclick='toggleCopyMode()'>Export region to PNG</button>
+  <button onclick='exportCSV()'>Export CSV</button>
+  <span id='filename-display'></span>
+</div>
+
+<div class='controls-row'>
+  <div class='ctrl-group'>
+    <span class='lbl'>Rotation</span>
+    <input type='range' id='rot-slider' min='-10' max='10' step='0.1' value='0' style='width: 260px'>
+    <span id='rot-val' style='min-width: 42px; display: inline-block; font-variant-numeric: tabular-nums; font-size: 13px;'>0.0°</span>
+    <button onclick='resetRotation()'>Reset</button>
+  </div>
+  <div class='ctrl-group'>
+    <span class='lbl'>Zoom</span>
+    <input type='range' id='zoom-slider' min='-4' max='3' step='0.05' value='0' style='width: 220px'>
+    <span id='zoom-val' style='min-width: 48px; display: inline-block; text-align: center; font-variant-numeric: tabular-nums; font-size: 13px;'>100%</span>
+    <button onclick='zoomReset()'>Reset</button>
+  </div>
+</div>
+
+<div id='err'></div>
+
+<div id='gel-area' class='no-levels'>
+  <div id='wrap'>
+    <div id='prompt'>
+      Load a gel: TIFF (raw image) or SVG (previously annotated).
+      <small>Double-click on the gel to add a lane; double-click inside a lane to add a band. Drag edges to resize.<br>
+      Drag empty area to pan. Ctrl+wheel = zoom around cursor. Shift+drag = zoom into region.</small>
+    </div>
+    <canvas id='cv'></canvas>
+    <svg id='svg' xmlns='http://www.w3.org/2000/svg'></svg>
+    <div id='lane-popup' class='popup'>
+      <button onclick='duplicateSelectedLane()' title='Duplicate lane'>⎘</button>
+      <button onclick='deleteSelectedLane()' title='Delete lane'>×</button>
+    </div>
+    <div id='band-popup' class='popup'>
+      <button onclick='deleteSelectedBand()' title='Delete band'>×</button>
+    </div>
+    <div id='tip'></div>
+  </div>
+  <!-- Vertical dual-handle levels slider (right side) -->
+  <div id='levels-panel' style='display:none'>
+    <canvas id='levels-cv'></canvas>
+    <div id='levels-handles'>
+      <div id='handle-wp' title='White point'></div>
+      <div id='handle-bp' title='Black point'></div>
+    </div>
+    <button id='levels-auto-btn' onclick='resetLevels()' title='Auto'>A</button>
+  </div>
+</div>
+
+<svg id='pcv' xmlns='http://www.w3.org/2000/svg'></svg>
+
+<div id='bg-controls'>
+  <fieldset>
+    <legend>BG</legend>
+    <label><input type='radio' name='bg' value='rolling' checked> Rolling ball</label>
+    <label><input type='radio' name='bg' value='local'> Local minima</label>
+    <label><input type='radio' name='bg' value='none'> None</label>
+  </fieldset>
+  <div style='display: flex; gap: 8px; align-items: center;'>
+    <span class='lbl'>Radius</span>
+    <input type='range' id='bg-r' min='5' max='300' step='1' value='50' style='width: 220px'>
+    <span id='bg-r-val' style='min-width: 32px; display: inline-block; font-variant-numeric: tabular-nums; font-size: 13px;'>50</span>
+  </div>
+</div>
+
+<div id='results-area' style='display:none'>
+  <table>
+    <thead><tr><th>Band</th><th>Raw</th><th>BG</th><th>Net</th><th>% lane</th></tr></thead>
+    <tbody id='rb'></tbody>
+  </table>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const cv = $('cv'), ctx = cv.getContext('2d');
+const pcv = $('pcv');
+const svg = $('svg');
+const tip = $('tip'), wrap = $('wrap');
+const lanePopup = $('lane-popup'), bandPopup = $('band-popup');
+const COLOR = '#E24B4A', YHANDLE = '#666', ZOOMRECT = '#185FA5', COPYRECT = '#0a8043';
+const ZOOM_MIN = 0.0625, ZOOM_MAX = 8;
+const state = {
+  lanes: [], selectedLaneId: null, selectedBand: null,
+  laneW: 50, wellH: 25, laneY0: 0, laneY1: 100,
+  rotation: 0, autoRotation: 0, zoom: 1,
+  copyMode: false,
+  drag: null, profDrag: null,
+  regionZoom: null, regionCopy: null,
+  filename: null,
+  gelBounds: null,
+  displayLo: 0, displayHi: 255, // display window, 0-255 matching gray scale
+};
+let gray = null, W = 0, H = 0;
+let origGray = null, origW = 0, origH = 0;
+let _id = 1;
+const uid = () => _id++;
+let lastMDTime = 0, lastMDPos = { x: -1000, y: -1000 };
+
+function isTiff(buf) { const b = new Uint8Array(buf); return (b[0]===0x49 && b[1]===0x49) || (b[0]===0x4D && b[1]===0x4D); }
+function showErr(m) { $('err').textContent = m; }
+function basename(name) { return name ? name.replace(/\.[^.]+$/, '') : 'gel'; }
+function setFilenameDisplay() { $('filename-display').textContent = state.filename ? ('— ' + state.filename) : ''; }
+function xmlEscape(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+// ====== UNIFIED FILE LOADING ======
+$('fi').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  const ext = f.name.toLowerCase().match(/\.(svg|tiff?)$/);
+  if (!ext) { showErr('Only TIFF (.tif/.tiff) or SVG (.svg) files supported.'); e.target.value = ''; return; }
+  if (ext[1] === 'svg') {
+    loadSVG(f);
+  } else {
+    state.filename = f.name; setFilenameDisplay();
+    const r = new FileReader();
+    r.onload = ev => {
+      const buf = ev.target.result;
+      if (!isTiff(buf)) { showErr('File is not a valid TIFF.'); return; }
+      try {
+        const ifds = UTIF.decode(buf);
+        if (!ifds.length) { showErr('TIFF decode failed.'); return; }
+        UTIF.decodeImage(buf, ifds[0]);
+        const ifd = ifds[0];
+        const w = ifd.width, h = ifd.height;
+        const bps = ifd.t258 ? (Array.isArray(ifd.t258) ? ifd.t258[0] : ifd.t258) : 8;
+        // Extract raw float grayscale preserving full dynamic range
+        const rawFloat = new Float32Array(w * h);
+        if (bps === 16 && ifd.data && ifd.data.length >= w * h * 2) {
+          const u16 = new Uint16Array(ifd.data.buffer, ifd.data.byteOffset, w * h);
+          for (let i = 0; i < u16.length; i++) rawFloat[i] = u16[i] / 65535 * 255;
+        } else if (bps === 32 && ifd.data && ifd.data.length >= w * h * 4) {
+          const f32 = new Float32Array(ifd.data.buffer, ifd.data.byteOffset, w * h);
+          let mn = Infinity, mx = -Infinity;
+          for (let i = 0; i < f32.length; i++) { if (f32[i] < mn) mn = f32[i]; if (f32[i] > mx) mx = f32[i]; }
+          const sp = Math.max(mx - mn, 1e-6);
+          for (let i = 0; i < f32.length; i++) rawFloat[i] = (f32[i] - mn) / sp * 255;
+        } else {
+          // Fall back to RGBA8
+          const rgba = UTIF.toRGBA8(ifd);
+          for (let i = 0; i < w * h; i++) rawFloat[i] = (rgba[i*4] + rgba[i*4+1] + rgba[i*4+2]) / 3;
+        }
+        finishLoadRaw(rawFloat, w, h);
+      } catch(err) { showErr('TIFF error: ' + err.message); }
+    };
+    r.readAsArrayBuffer(f);
+  }
+  e.target.value = '';
+});
+
+function finishLoad(id, w, h) {
+  // Called from SVG loader which gives us an 8-bit ImageData
+  const raw = new Float32Array(w * h);
+  for (let i = 0; i < raw.length; i++) raw[i] = (id.data[i*4] + id.data[i*4+1] + id.data[i*4+2]) / 3;
+  finishLoadRaw(raw, w, h);
+}
+
+function finishLoadRaw(raw, w, h) {
+  let mean = 0, n = 0;
+  for (let i = 0; i < raw.length; i += 50) { mean += raw[i]; n++; }
+  mean /= n;
+  if (mean > 128) {
+    origGray = new Float32Array(raw.length);
+    for (let i = 0; i < raw.length; i++) origGray[i] = 255 - raw[i];
+  } else {
+    origGray = raw;
+  }
+  origW = w; origH = h;
+  state.lanes = []; state.selectedLaneId = null; state.selectedBand = null;
+  // Auto-detect rotation
+  const angle = autoDetectRotation();
+  const clamped = clamp(Math.round(angle * 10) / 10, -10, 10);
+  state.autoRotation = clamped;
+  state.rotation = clamped;
+  $('rot-slider').value = clamped;
+  $('rot-val').textContent = clamped.toFixed(1) + '°';
+  applyRotation(clamped);        // also calls detectGelBounds()
+  autoInitFromGel();
+  autoLevels();
+  $('prompt').style.display = 'none';
+  cv.style.display = 'block';
+  svg.style.display = 'block';
+  showErr('');
+  zoomFit();
+  renderImage(); redraw(); updateUI();
+}
+
+// ====== DISPLAY LEVELS (vertical dual-handle slider) ======
+const levelsCv = $('levels-cv');
+const levelsCtx = levelsCv.getContext('2d');
+const handleWp = $('handle-wp');   // white point — top (low gray value = bright)
+const handleBp = $('handle-bp');   // black point — bottom (high gray value = dark)
+handleWp.className = 'lvl-handle';
+handleBp.className = 'lvl-handle';
+
+// Convert displayLo/Hi (0-255) to fraction along the slider track (0=top=255, 1=bottom=0)
+function loToFrac(lo) { return 1 - lo / 255; }   // black point: high lo → near bottom
+function hiToFrac(hi) { return 1 - hi / 255; }   // white point: high hi → near top
+function fracToVal(f) { return clamp(Math.round((1 - f) * 255), 0, 255); }
+
+function drawLevelsGradient() {
+  const w = levelsCv.width, h = levelsCv.height;
+  const grad = levelsCtx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, '#ffffff');
+  grad.addColorStop(1, '#000000');
+  levelsCtx.fillStyle = grad;
+  levelsCtx.fillRect(0, 0, w, h);
+}
+
+function updateLevelsHandles() {
+  // Use canvas position relative to the handles container for exact alignment
+  const panel = $('levels-panel');
+  const handlesEl = $('levels-handles');
+  const canvasRect = levelsCv.getBoundingClientRect();
+  const panelRect = panel.getBoundingClientRect();
+  if (canvasRect.height === 0) return; // not yet laid out
+  const trackTop = canvasRect.top - panelRect.top;
+  const trackH = canvasRect.height;
+  const wpFrac = hiToFrac(state.displayHi);   // 0=top(white)→255, 1=bottom→0
+  const bpFrac = loToFrac(state.displayLo);
+  handleWp.style.top = (trackTop + wpFrac * trackH) + 'px';
+  handleBp.style.top = (trackTop + bpFrac * trackH) + 'px';
+}
+
+function initLevelsCanvas() {
+  const btn = $('levels-auto-btn');
+  const btnH = btn.offsetHeight + 8;
+  const wrapH = wrap.getBoundingClientRect().height;
+  const h = Math.max(40, Math.round(wrapH) - btnH - 12);
+  levelsCv.width = 14;
+  levelsCv.height = h;
+  drawLevelsGradient();
+  updateLevelsHandles();
+}
+
+// Drag state for handles
+let lvlDrag = null;
+function startLvlDrag(e, which) {
+  e.preventDefault();
+  lvlDrag = { which, startY: e.clientY, startLo: state.displayLo, startHi: state.displayHi };
+}
+handleWp.addEventListener('mousedown', e => startLvlDrag(e, 'wp'));
+handleBp.addEventListener('mousedown', e => startLvlDrag(e, 'bp'));
+
+window.addEventListener('mousemove', e => {
+  if (!lvlDrag) return;
+  const trackH = levelsCv.getBoundingClientRect().height || 1;
+  const dy = e.clientY - lvlDrag.startY;
+  const dVal = Math.round(-(dy / trackH) * 255);
+  if (lvlDrag.which === 'wp') {
+    const newHi = clamp(lvlDrag.startHi + dVal, state.displayLo + 1, 255);
+    setLevels(state.displayLo, newHi);
+  } else {
+    const newLo = clamp(lvlDrag.startLo + dVal, 0, state.displayHi - 1);
+    setLevels(newLo, state.displayHi);
+  }
+  renderImage();
+});
+window.addEventListener('mouseup', () => { lvlDrag = null; });
+
+// Auto-stretch: use 1st/99th percentile. But only if the image doesn't already
+// span most of the 0–255 range (> 80% span → assume already calibrated → no stretch).
+function autoLevels() {
+  if (!gray) return;
+  const sample = gray.length > 100000
+    ? Array.from({length: 10000}, (_, i) => gray[Math.floor(i * gray.length / 10000)])
+    : Array.from(gray);
+  sample.sort((a, b) => a - b);
+  const rawLo = sample[Math.floor(sample.length * 0.01)];
+  const rawHi = sample[Math.floor(sample.length * 0.99)];
+  const naturalSpan = rawHi - rawLo;
+  if (naturalSpan >= 204) {
+    setLevels(0, 255);
+  } else {
+    setLevels(Math.floor(rawLo), Math.ceil(rawHi));
+  }
+  $('levels-panel').style.display = 'flex';
+  $('gel-area').classList.remove('no-levels');
+  setTimeout(initLevelsCanvas, 0);
+}
+
+function setLevels(lo, hi) {
+  state.displayLo = clamp(lo, 0, 254);
+  state.displayHi = clamp(hi, lo + 1, 255);
+  updateLevelsHandles();
+}
+
+function resetLevels() { autoLevels(); renderImage(); }
+
+if (typeof ResizeObserver !== 'undefined') {
+  let roFrame = null;
+  new ResizeObserver(() => {
+    if ($('levels-panel').style.display !== 'flex') return;
+    if (roFrame) return;
+    roFrame = requestAnimationFrame(() => { roFrame = null; initLevelsCanvas(); });
+  }).observe(wrap);
+}
+// ====== AUTO ROTATION (edge-based via projection sharpness) ======
+function projectionSharpness(img, w, h, radDeg) {
+  // Project pixels onto both rotated axes. Sharper projections (sum of squared
+  // adjacent differences) indicate better alignment of horizontal/vertical edges.
+  const rad = radDeg * Math.PI / 180;
+  const cosA = Math.cos(rad), sinA = Math.sin(rad);
+  const cx = w / 2, cy = h / 2;
+  const projY = new Float32Array(h);
+  const projX = new Float32Array(w);
+  const stride = 2;
+  for (let y = 0; y < h; y += stride) {
+    for (let x = 0; x < w; x += stride) {
+      const dx = x - cx, dy = y - cy;
+      const yNew = dx * sinA + dy * cosA + cy;
+      const xNew = dx * cosA - dy * sinA + cx;
+      const v = img[y * w + x];
+      const bY = yNew | 0;
+      const bX = xNew | 0;
+      if (bY >= 0 && bY < h) projY[bY] += v;
+      if (bX >= 0 && bX < w) projX[bX] += v;
+    }
+  }
+  let shY = 0;
+  for (let i = 1; i < h; i++) {
+    const d = projY[i] - projY[i-1];
+    shY += d * d;
+  }
+  let shX = 0;
+  for (let i = 1; i < w; i++) {
+    const d = projX[i] - projX[i-1];
+    shX += d * d;
+  }
+  return shY + shX;
+}
+
+function autoDetectRotation() {
+  if (!origGray || origH < 50 || origW < 50) return 0;
+  // Downsample for speed if image is large
+  let img = origGray, w = origW, h = origH;
+  const maxDim = 500;
+  if (Math.max(origW, origH) > maxDim) {
+    const factor = Math.ceil(Math.max(origW, origH) / maxDim);
+    w = Math.floor(origW / factor);
+    h = Math.floor(origH / factor);
+    img = new Float32Array(w * h);
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++)
+        img[y * w + x] = origGray[y * factor * origW + x * factor];
+  }
+  // Coarse search
+  let bestAngle = 0, bestSh = -1;
+  for (let deg = -7; deg <= 7; deg += 0.5) {
+    const sh = projectionSharpness(img, w, h, deg);
+    if (sh > bestSh) { bestSh = sh; bestAngle = deg; }
+  }
+  // Fine refinement
+  for (let deg = bestAngle - 0.45; deg <= bestAngle + 0.45; deg += 0.05) {
+    const sh = projectionSharpness(img, w, h, deg);
+    if (sh > bestSh) { bestSh = sh; bestAngle = deg; }
+  }
+  return clamp(bestAngle, -10, 10);
+}
+
+// ====== WELL DETECTION & LANE INIT ======
+// Called after detectGelBounds(). Sets laneY0/laneY1 from gel bounds (or 5%
+// ====== LANE RANGE INIT ======
+function autoInitFromGel() {
+  const b = state.gelBounds;
+  if (b) {
+    state.laneY0 = Math.max(0, Math.round(b.y0));
+    state.laneY1 = Math.min(H, Math.round(b.y1));
+    state.laneW = clamp(Math.round((b.x1 - b.x0) / 10), 10, 400);
+  } else {
+    state.laneY0 = Math.round(H * 0.05);
+    state.laneY1 = Math.round(H * 0.95);
+    state.laneW = clamp(Math.round(W / 10), 10, 400);
+  }
+  state.wellH = 25;
+  state.lanes = []; state.selectedLaneId = null; state.selectedBand = null;
+  rebuildLabels();
+}
+
+
+// ====== GEL EDGE DETECTION ======
+// Detect outer rectangular boundary of the gel on the current rotated image.
+// `gray` here is bands-bright form: gel interior tends to be darker (lower
+// values) than the bright background of the imaging system. Look for transitions
+// where row/column averages cross a threshold between background and gel.
+function detectGelBounds() {
+  if (!gray || W < 40 || H < 40) { state.gelBounds = null; return; }
+  // Row and column averages
+  const rowAvg = new Float32Array(H);
+  for (let y = 0; y < H; y++) {
+    let s = 0;
+    for (let x = 0; x < W; x++) s += gray[y*W + x];
+    rowAvg[y] = s / W;
+  }
+  const colAvg = new Float32Array(W);
+  for (let x = 0; x < W; x++) {
+    let s = 0;
+    for (let y = 0; y < H; y++) s += gray[y*W + x];
+    colAvg[x] = s / H;
+  }
+  // For each profile, estimate background (the more extreme of the two ends'
+  // edge-strip means) and interior (middle 50% mean), then threshold halfway.
+  function findEdges(prof) {
+    const n = prof.length;
+    const edge = Math.max(2, Math.floor(n * 0.02));
+    let bgL = 0, bgR = 0;
+    for (let i = 0; i < edge; i++) { bgL += prof[i]; bgR += prof[n-1-i]; }
+    bgL /= edge; bgR /= edge;
+    const bg = (bgL + bgR) / 2;
+    let mid = 0;
+    const m0 = Math.floor(n * 0.25), m1 = Math.floor(n * 0.75);
+    for (let i = m0; i < m1; i++) mid += prof[i];
+    mid /= (m1 - m0);
+    if (Math.abs(mid - bg) < 2) return null; // No clear gel signal
+    const thresh = (bg + mid) / 2;
+    const sign = mid > bg ? 1 : -1;
+    // Walk inward from each end until crossing threshold (and staying past)
+    function walk(start, end, step) {
+      let crossed = -1;
+      const minRun = Math.max(3, Math.floor(n * 0.01));
+      let run = 0;
+      for (let i = start; (step > 0) ? (i < end) : (i > end); i += step) {
+        const past = sign > 0 ? (prof[i] > thresh) : (prof[i] < thresh);
+        if (past) { if (run === 0) crossed = i; run++; if (run >= minRun) return crossed; }
+        else { run = 0; crossed = -1; }
+      }
+      return -1;
+    }
+    const a = walk(0, n, 1);
+    const b = walk(n - 1, -1, -1);
+    if (a < 0 || b < 0 || b - a < n * 0.2) return null;
+    return [a, b];
+  }
+  const ye = findEdges(rowAvg);
+  const xe = findEdges(colAvg);
+  if (!ye || !xe) { state.gelBounds = null; return; }
+  state.gelBounds = { x0: xe[0], y0: ye[0], x1: xe[1], y1: ye[1] };
+}
+
+// ====== ROTATION ======
+function rotateAroundCenter(srcGray, w, h, rad) {
+  const cosA = Math.cos(rad), sinA = Math.sin(rad);
+  const ng = new Float32Array(w * h);
+  const cx = w / 2, cy = h / 2;
+  for (let ny = 0; ny < h; ny++) {
+    for (let nx = 0; nx < w; nx++) {
+      const dx = nx - cx, dy = ny - cy;
+      const sx = cx + dx * cosA + dy * sinA;
+      const sy = cy - dx * sinA + dy * cosA;
+      if (sx >= 0 && sx < w - 1 && sy >= 0 && sy < h - 1) {
+        const x0 = Math.floor(sx), y0 = Math.floor(sy);
+        const fx = sx - x0, fy = sy - y0;
+        const v00 = srcGray[y0*w + x0];
+        const v10 = srcGray[y0*w + x0 + 1];
+        const v01 = srcGray[(y0+1)*w + x0];
+        const v11 = srcGray[(y0+1)*w + x0 + 1];
+        ng[ny*w + nx] = (1-fx)*(1-fy)*v00 + fx*(1-fy)*v10 + (1-fx)*fy*v01 + fx*fy*v11;
+      } else {
+        ng[ny*w + nx] = 0;
+      }
+    }
+  }
+  return ng;
+}
+
+function applyRotation(deg) {
+  if (!origGray) return;
+  W = origW; H = origH;
+  if (deg === 0) gray = origGray.slice();
+  else gray = rotateAroundCenter(origGray, origW, origH, deg * Math.PI / 180);
+  cv.width = W; cv.height = H;
+  renderImage();
+  detectGelBounds();
+}
+
+let rotateTimer;
+$('rot-slider').addEventListener('input', e => {
+  const v = parseFloat(e.target.value);
+  $('rot-val').textContent = v.toFixed(1) + '°';
+  clearTimeout(rotateTimer);
+  rotateTimer = setTimeout(() => {
+    state.rotation = v;
+    applyRotation(v);
+    redraw(); updateUI();
+  }, 100);
+});
+
+function resetRotation() {
+  const v = state.autoRotation;
+  $('rot-slider').value = v;
+  $('rot-val').textContent = v.toFixed(1) + '°';
+  state.rotation = v;
+  applyRotation(v);
+  redraw(); updateUI();
+}
+
+// ====== IMAGE RENDER ======
+function renderImage() {
+  if (!gray) return;
+  const id = new ImageData(W, H);
+  const lo = state.displayLo, hi = state.displayHi;
+  const span = Math.max(hi - lo, 1);
+  for (let i = 0; i < gray.length; i++) {
+    const v = clamp(Math.round(255 - ((gray[i] - lo) / span) * 255), 0, 255);
+    id.data[i*4]=v; id.data[i*4+1]=v; id.data[i*4+2]=v; id.data[i*4+3]=255;
+  }
+  cv.width = W; cv.height = H;
+  ctx.putImageData(id, 0, 0);
+}
+
+// ====== ZOOM ======
+function applyZoom() {
+  const dW = W * state.zoom, dH = H * state.zoom;
+  cv.style.width = dW + 'px';
+  cv.style.height = dH + 'px';
+  svg.setAttribute('width', dW);
+  svg.setAttribute('height', dH);
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  $('zoom-val').textContent = Math.round(state.zoom * 100) + '%';
+  $('zoom-slider').value = Math.log2(state.zoom);
+  updatePopups();
+}
+function zoomReset() { zoomFit(); }
+function zoomFit() {
+  if (!gray) return;
+  const wRect = wrap.getBoundingClientRect();
+  const fitW = (wRect.width - 4) / W;
+  const fitH = (wRect.height - 4) / H;
+  state.zoom = clamp(Math.min(fitW, fitH, 1), ZOOM_MIN, ZOOM_MAX);
+  applyZoom();
+}
+function zoomToRegion(x, y, w, h) {
+  const wRect = wrap.getBoundingClientRect();
+  const targetZoom = Math.min((wRect.width - 4) / w, (wRect.height - 4) / h);
+  state.zoom = clamp(targetZoom, ZOOM_MIN, ZOOM_MAX);
+  applyZoom();
+  const cxImg = x + w/2, cyImg = y + h/2;
+  wrap.scrollLeft = Math.max(0, cxImg * state.zoom - wRect.width / 2);
+  wrap.scrollTop = Math.max(0, cyImg * state.zoom - wRect.height / 2);
+}
+
+$('zoom-slider').addEventListener('input', e => {
+  state.zoom = clamp(Math.pow(2, parseFloat(e.target.value)), ZOOM_MIN, ZOOM_MAX);
+  applyZoom();
+});
+
+svg.addEventListener('wheel', e => {
+  if (!e.ctrlKey && !e.metaKey) return;
+  e.preventDefault();
+  const wRect = wrap.getBoundingClientRect();
+  const r = svg.getBoundingClientRect();
+  const mx = (e.clientX - r.left) * (W / r.width);
+  const my = (e.clientY - r.top) * (H / r.height);
+  const factor = e.deltaY < 0 ? 1.06 : 1/1.06;
+  const newZoom = clamp(state.zoom * factor, ZOOM_MIN, ZOOM_MAX);
+  if (newZoom === state.zoom) return;
+  state.zoom = newZoom;
+  applyZoom();
+  const targetL = mx * state.zoom - (e.clientX - wRect.left);
+  const targetT = my * state.zoom - (e.clientY - wRect.top);
+  wrap.scrollLeft = Math.max(0, targetL);
+  wrap.scrollTop = Math.max(0, targetT);
+}, { passive: false });
+
+// ====== LABELS ======
+function rebuildLabels() {
+  state.lanes.sort((a,b) => a.x - b.x);
+  state.lanes.forEach((L, li) => {
+    L.label = String(li+1);
+    L.bands.sort((a,b) => a.y - b.y);
+    L.bands.forEach((B, bi) => { B.label = `${li+1}-${bi+1}`; });
+  });
+}
+
+// ====== SVG ANNOTATIONS ======
+function annotationsString(forExport = false) {
+  if (!gray) return '';
+  const selLaneId = forExport ? null : state.selectedLaneId;
+  const selBand = forExport ? null : state.selectedBand;
+  let s = '';
+  if (!forExport) s += `<rect x="0" y="0" width="${W}" height="${H}" fill="transparent" pointer-events="all"/>`;
+
+  const edges = new Map();
+  state.lanes.forEach(L => {
+    const sel = L.id === selLaneId;
+    [L.x, L.x + state.laneW].forEach(x => {
+      const key = Math.round(x);
+      if (!edges.has(key) || sel) edges.set(key, { x, sel });
+    });
+  });
+
+  // Draw lane rectangles (sides + top/bottom per lane)
+  state.lanes.forEach(L => {
+    const sel = L.id === selLaneId;
+    const sw = sel ? 2.5 : 1.2;
+    const dash = sel ? '' : ' stroke-dasharray="6 4"';
+    const lh = state.laneY1 - state.laneY0;
+    s += `<rect x="${L.x}" y="${state.laneY0}" width="${state.laneW}" height="${lh}" fill="none" stroke="${COLOR}" stroke-width="${sw}"${dash} pointer-events="none"/>`;
+    s += `<text x="${L.x + 3}" y="${state.laneY0 + 13}" fill="${COLOR}" font-size="12" font-weight="bold" font-family="sans-serif">L${L.label}</text>`;
+    L.bands.forEach(B => {
+      const bSel = selBand && selBand.bandId === B.id;
+      const bw = bSel ? 3 : 1.8;
+      s += `<rect x="${L.x}" y="${B.y}" width="${state.laneW}" height="${B.h}" fill="none" stroke="${COLOR}" stroke-width="${bw}" pointer-events="none"/>`;
+      s += `<text x="${L.x + 3}" y="${B.y + 12}" fill="${COLOR}" font-size="12" font-weight="bold" font-family="sans-serif">${B.label}</text>`;
+    });
+  });
+
+  if (!forExport && state.regionZoom) {
+    const r = state.regionZoom;
+    const x = Math.min(r.sx, r.ex), y = Math.min(r.sy, r.ey);
+    const w = Math.abs(r.ex - r.sx), h = Math.abs(r.ey - r.sy);
+    s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${ZOOMRECT}" fill-opacity="0.1" stroke="${ZOOMRECT}" stroke-width="1" stroke-dasharray="4 3" pointer-events="none"/>`;
+  }
+  if (!forExport && state.regionCopy) {
+    const r = state.regionCopy;
+    const x = Math.min(r.sx, r.ex), y = Math.min(r.sy, r.ey);
+    const w = Math.abs(r.ex - r.sx), h = Math.abs(r.ey - r.sy);
+    s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${COPYRECT}" fill-opacity="0.12" stroke="${COPYRECT}" stroke-width="1" stroke-dasharray="4 3" pointer-events="none"/>`;
+  }
+  return s;
+}
+
+function redraw() {
+  if (!gray) return;
+  svg.innerHTML = annotationsString();
+}
+
+// ====== CANVAS 2D ANNOTATIONS (for PNG export) ======
+function drawAnnotationsCanvas2D(ctx2, regionX, regionY) {
+  ctx2.save();
+  ctx2.translate(-regionX, -regionY);
+
+  ctx2.font = 'bold 12px sans-serif';
+  ctx2.fillStyle = COLOR;
+  ctx2.textBaseline = 'alphabetic';
+  const lh = state.laneY1 - state.laneY0;
+  state.lanes.forEach(L => {
+    ctx2.strokeStyle = COLOR;
+    ctx2.lineWidth = 1.2;
+    ctx2.setLineDash([6, 4]);
+    ctx2.strokeRect(L.x, state.laneY0, state.laneW, lh);
+    ctx2.setLineDash([]);
+    ctx2.fillText('L' + L.label, L.x + 3, state.laneY0 + 13);
+    L.bands.forEach(B => {
+      ctx2.strokeStyle = COLOR;
+      ctx2.lineWidth = 1.8;
+      ctx2.setLineDash([]);
+      ctx2.strokeRect(L.x, B.y, state.laneW, B.h);
+      ctx2.fillText(B.label, L.x + 3, B.y + 12);
+    });
+  });
+
+  ctx2.restore();
+}
+
+// ====== PNG DPI METADATA (pHYs chunk) ======
+function crc32(bytes) {
+  if (!crc32.table) {
+    crc32.table = new Uint32Array(256);
+    for (let i = 0; i < 256; i++) {
+      let c = i;
+      for (let j = 0; j < 8; j++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+      crc32.table[i] = c;
+    }
+  }
+  let crc = 0xffffffff;
+  for (let i = 0; i < bytes.length; i++) crc = crc32.table[(crc ^ bytes[i]) & 0xff] ^ (crc >>> 8);
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function makePhysChunk(dpi) {
+  const ppm = Math.round(dpi / 0.0254);
+  const chunk = new Uint8Array(21);
+  const dv = new DataView(chunk.buffer);
+  dv.setUint32(0, 9, false);                // length = 9
+  chunk[4] = 0x70; chunk[5] = 0x48; chunk[6] = 0x59; chunk[7] = 0x73; // 'pHYs'
+  dv.setUint32(8, ppm, false);              // X ppm
+  dv.setUint32(12, ppm, false);             // Y ppm
+  chunk[16] = 1;                            // unit = meters
+  dv.setUint32(17, crc32(chunk.slice(4, 17)), false);
+  return chunk;
+}
+
+function addPngDpi(pngBytes, dpi) {
+  const physChunk = makePhysChunk(dpi);
+  // Find IHDR end and any existing pHYs
+  let pos = 8;
+  let ihdrEnd = -1, existingPhys = -1, existingPhysTotal = 0;
+  while (pos < pngBytes.length - 8) {
+    const len = (pngBytes[pos] << 24) | (pngBytes[pos+1] << 16) | (pngBytes[pos+2] << 8) | pngBytes[pos+3];
+    const type = String.fromCharCode(pngBytes[pos+4], pngBytes[pos+5], pngBytes[pos+6], pngBytes[pos+7]);
+    const total = 12 + len;
+    if (type === 'IHDR') ihdrEnd = pos + total;
+    if (type === 'pHYs') { existingPhys = pos; existingPhysTotal = total; break; }
+    if (type === 'IDAT') break;
+    pos += total;
+  }
+  if (existingPhys >= 0) {
+    const result = new Uint8Array(pngBytes.length - existingPhysTotal + physChunk.length);
+    result.set(pngBytes.subarray(0, existingPhys), 0);
+    result.set(physChunk, existingPhys);
+    result.set(pngBytes.subarray(existingPhys + existingPhysTotal), existingPhys + physChunk.length);
+    return result;
+  }
+  if (ihdrEnd >= 0) {
+    const result = new Uint8Array(pngBytes.length + physChunk.length);
+    result.set(pngBytes.subarray(0, ihdrEnd), 0);
+    result.set(physChunk, ihdrEnd);
+    result.set(pngBytes.subarray(ihdrEnd), ihdrEnd + physChunk.length);
+    return result;
+  }
+  return pngBytes;
+}
+
+// ====== POPUPS ======
+function updatePopups() {
+  const L = state.lanes.find(l => l.id === state.selectedLaneId);
+  if (!L) { lanePopup.classList.remove('show'); bandPopup.classList.remove('show'); return; }
+  const z = state.zoom;
+  let lx = (L.x + state.laneW + 4) * z;
+  if (lx + 80 > W * z) lx = (L.x - 4) * z - 80;
+  if (lx < 0) lx = 4;
+  lanePopup.style.left = lx + 'px';
+  lanePopup.style.top = Math.max(0, state.laneY0 * z) + 'px';
+  lanePopup.classList.add('show');
+
+  if (state.selectedBand && state.selectedBand.laneId === L.id) {
+    const B = L.bands.find(b => b.id === state.selectedBand.bandId);
+    if (B) {
+      let bx = (L.x + state.laneW + 4) * z;
+      if (bx + 36 > W * z) bx = (L.x - 4) * z - 36;
+      if (bx < 0) bx = 4;
+      bandPopup.style.left = bx + 'px';
+      bandPopup.style.top = (B.y * z) + 'px';
+      bandPopup.classList.add('show');
+    } else bandPopup.classList.remove('show');
+  } else bandPopup.classList.remove('show');
+}
+
+// ====== HIT TEST ======
+function laneAt(x) { for (const L of state.lanes) if (x >= L.x && x <= L.x + state.laneW) return L; return null; }
+function bandAt(L, y) { for (const B of L.bands) if (y >= B.y && y <= B.y + B.h) return B; return null; }
+function hitTest(x, y) {
+  const L = laneAt(x);
+  if (L) {
+    // Check band hits first
+    const B = bandAt(L, y);
+    if (B && y >= state.laneY0 && y <= state.laneY1) {
+      if (y - B.y <= 5) return { t: 'btop', L, B };
+      if (B.y + B.h - y <= 5) return { t: 'bbot', L, B };
+      return { t: 'band', L, B };
+    }
+    // Lane top/bottom edge drag (global laneY0/Y1)
+    if (Math.abs(y - state.laneY0) < 6) return { t: 'y0line', L };
+    if (Math.abs(y - state.laneY1) < 6) return { t: 'y1line', L };
+    // Lane side edges
+    if (x - L.x <= 4) return { t: 'lleft', L };
+    if (L.x + state.laneW - x <= 4) return { t: 'lright', L };
+    // Inside lane rect
+    if (y >= state.laneY0 && y <= state.laneY1) return { t: 'lane', L };
+  }
+  return { t: 'none' };
+}
+
+function svgMP(e) {
+  const r = svg.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * (W / r.width), y: (e.clientY - r.top) * (H / r.height) };
+}
+
+// ====== DOUBLE-CLICK HANDLER ======
+function handleDoubleClick(p) {
+  const L = laneAt(p.x);
+  if (L) {
+    const cy = Math.max(state.laneY0, Math.min(state.laneY1 - state.wellH, p.y - state.wellH/2));
+    const B = { id: uid(), y: cy, h: state.wellH };
+    L.bands.push(B);
+    state.selectedLaneId = L.id;
+    state.selectedBand = { laneId: L.id, bandId: B.id };
+  } else {
+    const L2 = { id: uid(), x: Math.max(0, Math.min(W - state.laneW, p.x - state.laneW/2)), bands: [] };
+    state.lanes.push(L2);
+    state.selectedLaneId = L2.id;
+    state.selectedBand = null;
+  }
+  rebuildLabels(); updateUI();
+}
+
+// ====== SVG MOUSE EVENTS ======
+svg.addEventListener('mousedown', e => {
+  if (!gray) return;
+  const p = svgMP(e);
+  const now = Date.now();
+  const isDbl = !e.shiftKey && !state.copyMode &&
+                (now - lastMDTime < 400) &&
+                Math.abs(p.x - lastMDPos.x) < 10 &&
+                Math.abs(p.y - lastMDPos.y) < 10;
+  lastMDTime = now; lastMDPos = p;
+
+  if (state.copyMode) {
+    e.preventDefault();
+    state.regionCopy = { sx: p.x, sy: p.y, ex: p.x, ey: p.y };
+    redraw();
+    return;
+  }
+  if (e.shiftKey) {
+    e.preventDefault();
+    state.regionZoom = { sx: p.x, sy: p.y, ex: p.x, ey: p.y };
+    redraw();
+    return;
+  }
+  if (isDbl) {
+    handleDoubleClick(p);
+    state.drag = null;
+    lastMDTime = 0;
+    return;
+  }
+
+  const h = hitTest(p.x, p.y);
+  if (h.t === 'none') {
+    state.drag = {
+      t: 'pan',
+      cx: e.clientX, cy: e.clientY,
+      startScrollLeft: wrap.scrollLeft,
+      startScrollTop: wrap.scrollTop,
+      moved: false,
+    };
+    svg.style.cursor = 'grabbing';
+    return;
+  }
+  const origCenters = {};
+  state.lanes.forEach(L => { origCenters[L.id] = L.x + state.laneW/2; });
+  state.drag = { t: h.t, L: h.L, B: h.B, sx: p.x, sy: p.y, ox: h.L?.x, oW: state.laneW, oy: h.B?.y, oh: h.B?.h, origCenters, moved: false };
+});
+
+svg.addEventListener('mousemove', e => {
+  const p = svgMP(e);
+
+  if (state.regionCopy) { state.regionCopy.ex = p.x; state.regionCopy.ey = p.y; redraw(); return; }
+  if (state.regionZoom) { state.regionZoom.ex = p.x; state.regionZoom.ey = p.y; redraw(); return; }
+
+  if (state.drag) {
+    const d = state.drag;
+
+    if (d.t === 'pan') {
+      const cdx = e.clientX - d.cx;
+      const cdy = e.clientY - d.cy;
+      if (Math.abs(cdx) > 2 || Math.abs(cdy) > 2) d.moved = true;
+      wrap.scrollLeft = d.startScrollLeft - cdx;
+      wrap.scrollTop = d.startScrollTop - cdy;
+      return;
+    }
+
+    const dx = p.x - d.sx, dy = p.y - d.sy;
+    if (Math.abs(dx) > 2 || Math.abs(dy) > 2) d.moved = true;
+    if (d.t === 'lane') {
+      d.L.x = Math.max(0, Math.min(W - state.laneW, d.ox + dx));
+    } else if (d.t === 'lleft') {
+      const newX = Math.max(0, Math.min(d.ox + d.oW - 10, d.ox + dx));
+      const newW = d.oW + (d.ox - newX);
+      state.laneW = newW;
+      state.lanes.forEach(L => {
+        if (L.id === d.L.id) L.x = newX;
+        else L.x = Math.max(0, Math.min(W - newW, d.origCenters[L.id] - newW/2));
+      });
+    } else if (d.t === 'lright') {
+      const newW = Math.max(10, Math.min(W - d.ox, d.oW + dx));
+      state.laneW = newW;
+      state.lanes.forEach(L => {
+        if (L.id === d.L.id) L.x = d.ox;
+        else L.x = Math.max(0, Math.min(W - newW, d.origCenters[L.id] - newW/2));
+      });
+    } else if (d.t === 'band') {
+      d.B.y = Math.max(state.laneY0, Math.min(state.laneY1 - d.B.h, d.oy + dy));
+    } else if (d.t === 'btop') {
+      const ny = Math.max(state.laneY0, Math.min(d.oy + d.oh - 5, d.oy + dy));
+      d.B.h = d.oh + (d.oy - ny); d.B.y = ny;
+    } else if (d.t === 'bbot') {
+      d.B.h = Math.max(5, Math.min(state.laneY1 - d.B.y, d.oh + dy));
+    } else if (d.t === 'y0line') {
+      state.laneY0 = Math.max(0, Math.min(state.laneY1 - 30, p.y));
+    } else if (d.t === 'y1line') {
+      state.laneY1 = Math.max(state.laneY0 + 30, Math.min(H, p.y));
+    }
+    redraw(); updatePopups(); updateTable(); updateProfile();
+    return;
+  }
+
+  if (state.copyMode) { svg.style.cursor = 'crosshair'; hideTip(); return; }
+  if (e.shiftKey) { svg.style.cursor = 'crosshair'; hideTip(); return; }
+
+  const h = hitTest(p.x, p.y);
+  if (h.t === 'band' || h.t === 'btop' || h.t === 'bbot') {
+    svg.style.cursor = h.t === 'band' ? 'move' : 'ns-resize';
+    showTip(e, h.L, h.B);
+  } else if (h.t === 'lane') { svg.style.cursor = 'move'; hideTip(); }
+  else if (h.t === 'lleft' || h.t === 'lright') { svg.style.cursor = 'ew-resize'; hideTip(); }
+  else if (h.t === 'y0line' || h.t === 'y1line') { svg.style.cursor = 'ns-resize'; hideTip(); }
+  else { svg.style.cursor = 'grab'; hideTip(); }
+});
+
+svg.addEventListener('mouseleave', hideTip);
+
+svg.addEventListener('mouseup', e => {
+  if (state.regionCopy) {
+    const r = state.regionCopy;
+    state.regionCopy = null;
+    const w = Math.abs(r.ex - r.sx), h = Math.abs(r.ey - r.sy);
+    if (w > 5 && h > 5) {
+      const x = Math.max(0, Math.min(W, Math.min(r.sx, r.ex)));
+      const y = Math.max(0, Math.min(H, Math.min(r.sy, r.ey)));
+      exportRegionToPNG(x, y, Math.min(w, W - x), Math.min(h, H - y));
+    }
+    toggleCopyMode();
+    redraw();
+    return;
+  }
+  if (state.regionZoom) {
+    const r = state.regionZoom;
+    state.regionZoom = null;
+    const w = Math.abs(r.ex - r.sx), h = Math.abs(r.ey - r.sy);
+    if (w > 5 && h > 5) zoomToRegion(Math.min(r.sx, r.ex), Math.min(r.sy, r.ey), w, h);
+    redraw();
+    return;
+  }
+  if (!state.drag) return;
+
+  if (state.drag.t === 'pan') {
+    if (!state.drag.moved) {
+      state.selectedLaneId = null;
+      state.selectedBand = null;
+    } else {
+      lastMDTime = 0;
+    }
+    state.drag = null;
+    svg.style.cursor = 'grab';
+    updateUI();
+    return;
+  }
+
+  if (!state.drag.moved && state.drag.L) {
+    state.selectedLaneId = state.drag.L.id;
+    if (state.drag.B) state.selectedBand = { laneId: state.drag.L.id, bandId: state.drag.B.id };
+    else state.selectedBand = null;
+  }
+  if (state.drag.moved) lastMDTime = 0;
+  state.drag = null;
+  rebuildLabels(); updateUI();
+});
+
+function showTip(e, L, B) {
+  const { profile, bg, yOffset } = laneAnalysis(L);
+  const len = profile.length;
+  const yRel0 = Math.max(0, Math.round(B.y - yOffset));
+  const yRel1 = Math.min(len, Math.round(B.y + B.h - yOffset));
+  let r = 0, bgS = 0;
+  for (let yi = yRel0; yi < yRel1; yi++) { r += profile[yi]; bgS += bg[yi]; }
+  const lw = Math.round(state.laneW);
+  const net = Math.max(0, (r - bgS) * lw);
+  const wr = wrap.getBoundingClientRect();
+  tip.style.left = (e.clientX - wr.left + wrap.scrollLeft + 12) + 'px';
+  tip.style.top = (e.clientY - wr.top + wrap.scrollTop + 12) + 'px';
+  tip.style.display = 'block';
+  tip.textContent = `${B.label}: net ${Math.round(net).toLocaleString()}`;
+}
+function hideTip() { tip.style.display = 'none'; }
+
+// ====== ANALYSIS ======
+function getBgMethod() { return document.querySelector('input[name="bg"]:checked').value; }
+
+function laneAnalysis(L) {
+  const x0 = Math.max(0, Math.round(L.x)), x1 = Math.min(W, Math.round(L.x + state.laneW));
+  const xw = Math.max(1, x1 - x0);
+  const y0 = Math.max(0, Math.round(state.laneY0));
+  const y1 = Math.min(H, Math.round(state.laneY1));
+  const len = Math.max(1, y1 - y0);
+  const prof = new Float32Array(len);
+  for (let yi = 0; yi < len; yi++) {
+    let s = 0;
+    for (let x = x0; x < x1; x++) s += gray[(y0+yi)*W+x];
+    prof[yi] = s/xw;
+  }
+  const m = getBgMethod();
+  const r = parseInt($('bg-r').value) || 50;
+  let bg;
+  if (m === 'rolling') bg = rollingBall(prof, r);
+  else if (m === 'local') bg = localMin(prof, r);
+  else bg = new Float32Array(prof.length);
+  return { profile: prof, bg, yOffset: y0, w: xw };
+}
+
+function rollingBall(p, r) {
+  const n = p.length, mn = new Float32Array(n);
+  for (let i = 0; i < n; i++) { let v = Infinity; for (let j = Math.max(0,i-r); j <= Math.min(n-1,i+r); j++) v = Math.min(v, p[j]); mn[i] = v; }
+  const o = new Float32Array(n);
+  for (let i = 0; i < n; i++) { let s = 0, c = 0; for (let j = Math.max(0,i-r); j <= Math.min(n-1,i+r); j++) { s += mn[j]; c++; } o[i] = s/c; }
+  return o;
+}
+function localMin(p, r) {
+  const n = p.length, bg = new Float32Array(n), st = Math.max(1, Math.floor(r/3));
+  for (let i = 0; i < n; i++) { let v = Infinity; for (let j = Math.max(0,i-r); j <= Math.min(n-1,i+r); j += st) v = Math.min(v, p[j]); bg[i] = v; }
+  return bg;
+}
+
+function bandVolume(B, profile, bg, yOffset) {
+  const len = profile.length;
+  const yRel0 = Math.max(0, Math.round(B.y - yOffset));
+  const yRel1 = Math.min(len, Math.round(B.y + B.h - yOffset));
+  let r = 0, bs = 0;
+  for (let yi = yRel0; yi < yRel1; yi++) { r += profile[yi]; bs += bg[yi]; }
+  const lw = Math.round(state.laneW);
+  return { raw: r*lw, bg: bs*lw, net: Math.max(0, (r-bs)*lw) };
+}
+
+function updateTable() {
+  const tb = $('rb'); tb.innerHTML = '';
+  let any = false;
+  state.lanes.forEach(L => {
+    const { profile, bg, yOffset } = laneAnalysis(L);
+    const vols = L.bands.map(B => ({ B, ...bandVolume(B, profile, bg, yOffset) }));
+    const total = vols.reduce((a,v) => a+v.net, 0);
+    vols.forEach(v => {
+      any = true;
+      const pct = total > 0 ? (v.net/total*100).toFixed(1) : '0.0';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${v.B.label}</td><td>${Math.round(v.raw).toLocaleString()}</td><td>${Math.round(v.bg).toLocaleString()}</td><td>${Math.round(v.net).toLocaleString()}</td><td>${pct}%</td>`;
+      tb.appendChild(tr);
+    });
+  });
+  $('results-area').style.display = any ? 'block' : 'none';
+}
+
+// ====== PROFILE (SVG) ======
+function updateProfile() {
+  const L = state.lanes.find(l => l.id === state.selectedLaneId);
+  if (!L) { pcv.style.display = 'none'; $('bg-controls').style.display = 'none'; return; }
+  pcv.style.display = 'block';
+  $('bg-controls').style.display = 'flex';
+
+  const PW = pcv.clientWidth || 600;
+  const PH = 140;
+  pcv.setAttribute('viewBox', `0 0 ${PW} ${PH}`);
+
+  const { profile, bg, yOffset } = laneAnalysis(L);
+  const len = profile.length;
+
+  let minV = Infinity, maxV = -Infinity;
+  for (let i = 0; i < len; i++) {
+    if (profile[i] < minV) minV = profile[i];
+    if (profile[i] > maxV) maxV = profile[i];
+    if (bg[i] < minV) minV = bg[i];
+  }
+  const range = maxV - minV || 1;
+  function toY(v) { return PH - ((v - minV) / range) * (PH - 14) - 4; }
+
+  let s = '';
+  L.bands.forEach(B => {
+    const x0 = ((B.y - yOffset) / len) * PW;
+    const x1 = ((B.y + B.h - yOffset) / len) * PW;
+    const isSel = state.selectedBand && state.selectedBand.bandId === B.id;
+    s += `<rect x="${x0.toFixed(2)}" y="0" width="${(x1-x0).toFixed(2)}" height="${PH}" fill="${COLOR}" fill-opacity="${isSel ? 0.25 : 0.10}"/>`;
+    s += `<line x1="${x0.toFixed(2)}" y1="0" x2="${x0.toFixed(2)}" y2="${PH}" stroke="${COLOR}" stroke-width="${isSel ? 2 : 1}" stroke-opacity="${isSel ? 1 : 0.45}"/>`;
+    s += `<line x1="${x1.toFixed(2)}" y1="0" x2="${x1.toFixed(2)}" y2="${PH}" stroke="${COLOR}" stroke-width="${isSel ? 2 : 1}" stroke-opacity="${isSel ? 1 : 0.45}"/>`;
+    s += `<text x="${(x0+3).toFixed(2)}" y="11" fill="${COLOR}" font-size="11" font-family="sans-serif">${B.label}</text>`;
+  });
+
+  let profPts = '';
+  for (let i = 0; i < len; i++) {
+    const x = (i/len) * PW;
+    profPts += `${x.toFixed(2)},${toY(profile[i]).toFixed(2)} `;
+  }
+  s += `<polyline points="${profPts.trim()}" fill="none" stroke="#185FA5" stroke-width="1.5"/>`;
+
+  if (getBgMethod() !== 'none') {
+    let bgPts = '';
+    for (let i = 0; i < len; i++) {
+      const x = (i/len) * PW;
+      bgPts += `${x.toFixed(2)},${toY(bg[i]).toFixed(2)} `;
+    }
+    s += `<polyline points="${bgPts.trim()}" fill="none" stroke="#185FA5" stroke-width="1.2" stroke-opacity="0.55" stroke-dasharray="4 3"/>`;
+  }
+  s += `<text x="4" y="11" fill="#444" font-size="11" font-weight="bold" font-family="sans-serif">Lane ${L.label} — intensity (peaks = bands)</text>`;
+
+  pcv.innerHTML = s;
+}
+
+if (typeof ResizeObserver !== 'undefined') {
+  new ResizeObserver(() => { if (state.selectedLaneId !== null) updateProfile(); }).observe(pcv);
+}
+
+// ====== PROFILE MOUSE ======
+function profileMouseX(e) {
+  const r = pcv.getBoundingClientRect();
+  return (e.clientX - r.left) * (pcv.clientWidth || 600) / r.width;
+}
+
+pcv.addEventListener('mousedown', e => {
+  const L = state.lanes.find(l => l.id === state.selectedLaneId);
+  if (!L) return;
+  const px = profileMouseX(e);
+  const PW = pcv.clientWidth || 600;
+  const lenImg = state.laneY1 - state.laneY0;
+  for (const B of L.bands) {
+    const bL = ((B.y - state.laneY0) / lenImg) * PW;
+    const bR = ((B.y + B.h - state.laneY0) / lenImg) * PW;
+    let mode = null;
+    if (Math.abs(px - bL) < 5) mode = 'btop';
+    else if (Math.abs(px - bR) < 5) mode = 'bbot';
+    else if (px > bL && px < bR) mode = 'band';
+    if (mode) {
+      state.profDrag = { B, mode, sx: px, oy: B.y, oh: B.h };
+      state.selectedBand = { laneId: L.id, bandId: B.id };
+      updateUI();
+      return;
+    }
+  }
+  state.selectedBand = null;
+  updateUI();
+});
+
+pcv.addEventListener('mousemove', e => {
+  const px = profileMouseX(e);
+  const L = state.lanes.find(l => l.id === state.selectedLaneId);
+  if (!L) return;
+  const PW = pcv.clientWidth || 600;
+  const lenImg = state.laneY1 - state.laneY0;
+  if (state.profDrag) {
+    const d = state.profDrag;
+    const delta = ((px - d.sx) / PW) * lenImg;
+    if (d.mode === 'band') {
+      d.B.y = Math.max(state.laneY0, Math.min(state.laneY1 - d.B.h, d.oy + delta));
+    } else if (d.mode === 'btop') {
+      const ny = Math.max(state.laneY0, Math.min(d.oy + d.oh - 5, d.oy + delta));
+      d.B.h = d.oh + (d.oy - ny); d.B.y = ny;
+    } else if (d.mode === 'bbot') {
+      d.B.h = Math.max(5, Math.min(state.laneY1 - d.B.y, d.oh + delta));
+    }
+    redraw(); updatePopups(); updateTable(); updateProfile();
+    return;
+  }
+  let c = 'default';
+  for (const B of L.bands) {
+    const bL = ((B.y - state.laneY0) / lenImg) * PW;
+    const bR = ((B.y + B.h - state.laneY0) / lenImg) * PW;
+    if (Math.abs(px - bL) < 5 || Math.abs(px - bR) < 5) { c = 'ew-resize'; break; }
+    if (px > bL && px < bR) c = 'move';
+  }
+  pcv.style.cursor = c;
+});
+
+pcv.addEventListener('mouseup', () => {
+  if (state.profDrag) { state.profDrag = null; rebuildLabels(); updateUI(); }
+});
+
+// ====== TOOLBAR ACTIONS ======
+function toggleCopyMode() {
+  state.copyMode = !state.copyMode;
+  $('btn-copy').classList.toggle('active', state.copyMode);
+  svg.style.cursor = state.copyMode ? 'crosshair' : 'default';
+  if (!state.copyMode) { state.regionCopy = null; redraw(); }
+}
+function deleteSelectedLane() {
+  state.lanes = state.lanes.filter(l => l.id !== state.selectedLaneId);
+  state.selectedLaneId = null; state.selectedBand = null;
+  rebuildLabels(); updateUI();
+}
+function duplicateSelectedLane() {
+  const L = state.lanes.find(l => l.id === state.selectedLaneId); if (!L) return;
+  const off = state.laneW + 4;
+  const nx = Math.min(W - state.laneW, L.x + off);
+  const nL = { id: uid(), x: nx, bands: L.bands.map(B => ({ id: uid(), y: B.y, h: B.h })) };
+  state.lanes.push(nL); state.selectedLaneId = nL.id; state.selectedBand = null;
+  rebuildLabels(); updateUI();
+}
+function deleteSelectedBand() {
+  if (!state.selectedBand) return;
+  const L = state.lanes.find(l => l.id === state.selectedBand.laneId); if (!L) return;
+  L.bands = L.bands.filter(b => b.id !== state.selectedBand.bandId);
+  state.selectedBand = null;
+  rebuildLabels(); updateUI();
+}
+
+// ====== DOWNLOAD HELPER ======
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); document.body.removeChild(a); }, 1000);
+}
+
+// ====== EXPORT CSV ======
+function exportCSV() {
+  if (state.lanes.length === 0) return;
+  let csv = 'Band,Raw,BG,Net,PercentLane\n';
+  state.lanes.forEach(L => {
+    const { profile, bg, yOffset } = laneAnalysis(L);
+    const vols = L.bands.map(B => ({ B, ...bandVolume(B, profile, bg, yOffset) }));
+    const total = vols.reduce((a,v) => a+v.net, 0);
+    vols.forEach(v => {
+      const p = total > 0 ? (v.net/total*100).toFixed(1) : '0.0';
+      csv += `${v.B.label},${Math.round(v.raw)},${Math.round(v.bg)},${Math.round(v.net)},${p}\n`;
+    });
+  });
+  downloadBlob(new Blob([csv], {type: 'text/csv;charset=utf-8'}), basename(state.filename) + '_quant.csv');
+}
+
+// ====== SVG EXPORT ======
+function buildConfig() {
+  return {
+    version: 3,
+    filename: state.filename,
+    rotation: state.rotation,
+    autoRotation: state.autoRotation,
+    origW, origH, W, H,
+    laneW: state.laneW, wellH: state.wellH,
+    laneY0: state.laneY0, laneY1: state.laneY1,
+    bgMethod: getBgMethod(),
+    bgRadius: parseInt($('bg-r').value),
+    displayLo: state.displayLo,
+    displayHi: state.displayHi,
+    lanes: state.lanes.map(L => ({
+      x: L.x,
+      bands: L.bands.map(B => ({ y: B.y, h: B.h })),
+    })),
+  };
+}
+
+function origImageDataUrl() {
+  const c = document.createElement('canvas');
+  c.width = origW; c.height = origH;
+  const cc = c.getContext('2d');
+  const id = new ImageData(origW, origH);
+  for (let i = 0; i < origGray.length; i++) {
+    const v = clamp(Math.round(255 - origGray[i]), 0, 255);
+    id.data[i*4]=v; id.data[i*4+1]=v; id.data[i*4+2]=v; id.data[i*4+3]=255;
+  }
+  cc.putImageData(id, 0, 0);
+  return c.toDataURL('image/png');
+}
+
+function exportSVG() {
+  try {
+    if (!origGray) { showErr('No image loaded.'); return; }
+    const imgDataUrl = origImageDataUrl();
+    const cfg = buildConfig();
+    const cfgB64 = btoa(unescape(encodeURIComponent(JSON.stringify(cfg))));
+    const transform = state.rotation === 0
+      ? ''
+      : ` transform="rotate(${state.rotation} ${origW/2} ${origH/2})"`;
+    const titleText = xmlEscape('Gel quantification: ' + (state.filename || 'untitled'));
+    const svgStr = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
+<title>${titleText}</title>
+<metadata id="gelQuantifierData">${cfgB64}</metadata>
+<g${transform}><image href="${imgDataUrl}" xlink:href="${imgDataUrl}" x="0" y="0" width="${origW}" height="${origH}"/></g>
+${annotationsString(true)}
+</svg>`;
+    downloadBlob(new Blob([svgStr], {type: 'image/svg+xml'}), basename(state.filename) + '_annotated.svg');
+    showErr('');
+  } catch (err) {
+    showErr('SVG export failed: ' + (err && err.message ? err.message : String(err)));
+  }
+}
+
+// ====== EXPORT REGION TO PNG (canvas 2D + 300 DPI pHYs) ======
+function exportRegionToPNG(x, y, w, h) {
+  try {
+    const tmpCv = document.createElement('canvas');
+    tmpCv.width = Math.max(1, Math.round(w));
+    tmpCv.height = Math.max(1, Math.round(h));
+    const tmpCtx = tmpCv.getContext('2d');
+    tmpCtx.drawImage(cv, x, y, w, h, 0, 0, w, h);
+    drawAnnotationsCanvas2D(tmpCtx, x, y);
+    tmpCv.toBlob(async blob => {
+      if (!blob) { showErr('PNG encoding failed.'); return; }
+      try {
+        const buf = await blob.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        const withDpi = addPngDpi(bytes, 300);
+        downloadBlob(new Blob([withDpi], {type: 'image/png'}), basename(state.filename) + '_region.png');
+      } catch (e) {
+        showErr('PNG DPI tagging failed: ' + (e && e.message ? e.message : String(e)));
+      }
+    }, 'image/png');
+  } catch (e) {
+    showErr('Region export failed: ' + (e && e.message ? e.message : String(e)));
+  }
+}
+
+// ====== LOAD SVG (annotated gel) ======
+
+function loadSVG(file) {
+  const r = new FileReader();
+  r.onload = ev => {
+    try {
+      const text = ev.target.result;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(text, 'image/svg+xml');
+      if (doc.querySelector('parsererror')) { showErr('SVG parse error.'); return; }
+      const metaEl = doc.getElementById('gelQuantifierData');
+      if (!metaEl) { showErr('This SVG has no Gel Quantifier metadata.'); return; }
+      const cfg = JSON.parse(decodeURIComponent(escape(atob(metaEl.textContent))));
+      const imgEl = doc.querySelector('image');
+      if (!imgEl) { showErr('No image element in SVG.'); return; }
+      const href = imgEl.getAttribute('href') || imgEl.getAttributeNS('http://www.w3.org/1999/xlink', 'href') || imgEl.getAttribute('xlink:href');
+      const img = new Image();
+      img.onload = () => {
+        const tmpCv = document.createElement('canvas');
+        tmpCv.width = img.width; tmpCv.height = img.height;
+        const tmpCtx = tmpCv.getContext('2d');
+        tmpCtx.drawImage(img, 0, 0);
+        const id = tmpCtx.getImageData(0, 0, img.width, img.height);
+        const raw = new Float32Array(img.width * img.height);
+        for (let i = 0; i < raw.length; i++) raw[i] = (id.data[i*4] + id.data[i*4+1] + id.data[i*4+2]) / 3;
+        // Saved image is bands-dark display form; invert
+        origGray = new Float32Array(raw.length);
+        for (let i = 0; i < raw.length; i++) origGray[i] = 255 - raw[i];
+        origW = img.width; origH = img.height;
+
+        state.filename = cfg.filename || file.name;
+        setFilenameDisplay();
+        state.rotation = cfg.rotation || 0;
+        state.autoRotation = cfg.autoRotation ?? state.rotation;
+        $('rot-slider').value = clamp(state.rotation, -10, 10);
+        $('rot-val').textContent = state.rotation.toFixed(1) + '°';
+        state.laneW = cfg.laneW || 50;
+        state.wellH = cfg.wellH || 25;
+        state.laneY0 = cfg.laneY0 ?? 0;
+        state.laneY1 = cfg.laneY1 ?? origH;
+        if (cfg.bgMethod) {
+          const rb = document.querySelector(`input[name="bg"][value="${cfg.bgMethod}"]`);
+          if (rb) rb.checked = true;
+        }
+        if (cfg.bgRadius) { $('bg-r').value = cfg.bgRadius; $('bg-r-val').textContent = cfg.bgRadius; }
+        state.lanes = (cfg.lanes || []).map(L => ({
+          id: uid(), x: L.x,
+          bands: (L.bands || []).map(B => ({ id: uid(), y: B.y, h: B.h })),
+        }));
+        state.selectedLaneId = null; state.selectedBand = null;
+
+        applyRotation(state.rotation);
+        // Restore saved levels or auto-detect
+        if (cfg.displayLo != null && cfg.displayHi != null) {
+          $('levels-panel').style.display = 'flex';
+          $('gel-area').classList.remove('no-levels');
+          setLevels(cfg.displayLo, cfg.displayHi);
+          renderImage();
+          setTimeout(initLevelsCanvas, 0);
+        } else {
+          autoLevels();
+        }
+        $('prompt').style.display = 'none';
+        cv.style.display = 'block';
+        svg.style.display = 'block';
+        showErr('');
+        zoomFit();
+        rebuildLabels();
+        redraw(); updateUI();
+      };
+      img.onerror = () => showErr('Failed to load image from SVG.');
+      img.src = href;
+    } catch (err) {
+      showErr('Load failed: ' + (err && err.message ? err.message : String(err)));
+    }
+  };
+  r.readAsText(file);
+}
+
+function updateUI() {
+  rebuildLabels(); redraw(); updateTable(); updateProfile(); updatePopups();
+}
+
+document.querySelectorAll('input[name="bg"]').forEach(rb => {
+  rb.addEventListener('change', () => { updateTable(); updateProfile(); });
+});
+$('bg-r').addEventListener('input', e => {
+  $('bg-r-val').textContent = e.target.value;
+  updateTable(); updateProfile();
+});
+
+window.addEventListener('resize', () => updatePopups());
+wrap.addEventListener('scroll', () => updatePopups());
+
+window.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (state.copyMode) toggleCopyMode();
+    if (state.regionZoom) { state.regionZoom = null; redraw(); }
+    if (state.regionCopy) { state.regionCopy = null; redraw(); }
+    if (state.drag && state.drag.t === 'pan') {
+      state.drag = null;
+      svg.style.cursor = 'grab';
+    }
+  }
+});
+</script>
+</body>
+</html>
