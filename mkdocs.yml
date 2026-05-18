@@ -8,7 +8,7 @@ theme:
   name: "material"
   features:
     - navigation.indexes
-    - natigation.sections
+    - navigation.sections
     - navigation.expand
     - navigation.tabs
     - navigation.tabs.sticky
