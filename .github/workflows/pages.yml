@@ -28,6 +28,7 @@ jobs:
 
       - run: pip install mkdocs mkdocs-material mkdocs-git-revision-date-localized-plugin mkdocs-git-authors-plugin pymdown-extensions
       - run: mkdocs build --strict
+      - run: cp -r tools site/
 
       - uses: actions/upload-pages-artifact@v3
         with:
