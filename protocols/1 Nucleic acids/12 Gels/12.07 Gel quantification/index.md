@@ -1,13 +1,2 @@
 # Gel quantification
-<iframe id="tool-frame" src="../../../tools/gel_quantification.html" style="width:100%; border:none; scrolling:no; overflow:hidden;"></iframe>
-
-<script>
-  const iframe = document.getElementById('tool-frame');
-  
-  iframe.addEventListener('load', function() {
-    // Wait for the iframe content to fully render, then grab its height
-    const height = iframe.contentWindow.document.body.scrollHeight;
-    // Apply that exact height to the iframe element
-    iframe.style.height = height + 'px';
-  });
-</script>
+<div style="position: relative; width: 100%; min-height: 85vh; overflow: visible;"> <iframe src="../../../tools/gel_quantification.html" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; scrolling: no; overflow: hidden;"> </iframe> </div>
