@@ -20,8 +20,7 @@
       margin: 0 0 10px;
     }
 
-    .toolbar,
-    .controls-row {
+    .toolbar {
       display: flex;
       gap: 6px;
       align-items: center;
@@ -31,17 +30,6 @@
       background: white;
       border-radius: 6px;
       border: 1px solid #ddd;
-    }
-
-    .controls-row {
-      gap: 18px;
-    }
-
-    .ctrl-group {
-      display: flex;
-      gap: 6px;
-      align-items: center;
-      flex-wrap: nowrap;
     }
 
     button {
@@ -260,7 +248,6 @@
       background: #eee;
       border: 1px solid #ccc;
       border-radius: 6px 0 0 6px;
-      max-height: 70vh;
       flex: 1;
     }
 
@@ -337,6 +324,46 @@
     #levels-auto-btn:hover {
       background: #e8e8e8;
     }
+
+    .panel-divider {
+      width: 22px;
+      height: 1px;
+      background: #ccc;
+      margin: 4px 0;
+      flex-shrink: 0;
+    }
+
+    #rot-val {
+      font-size: 10px;
+      color: #555;
+      font-variant-numeric: tabular-nums;
+      text-align: center;
+      flex-shrink: 0;
+      line-height: 1.3;
+      margin-bottom: 1px;
+    }
+
+    .panel-btn {
+      padding: 2px;
+      margin-top: 2px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      background: white;
+      cursor: pointer;
+      color: #444;
+      flex-shrink: 0;
+      width: 24px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 0;
+      box-sizing: border-box;
+    }
+
+    .panel-btn:hover {
+      background: #e8e8e8;
+    }
   </style>
 </head>
 
@@ -350,23 +377,6 @@
     <button id='btn-copy' onclick='toggleCopyMode()'>Export region to PNG</button>
     <button onclick='exportCSV()'>Export CSV</button>
     <span id='filename-display'></span>
-  </div>
-
-  <div class='controls-row'>
-    <div class='ctrl-group'>
-      <span class='lbl'>Rotation</span>
-      <input type='range' id='rot-slider' min='-10' max='10' step='0.1' value='0' style='width: 260px'>
-      <span id='rot-val'
-        style='min-width: 42px; display: inline-block; font-variant-numeric: tabular-nums; font-size: 13px;'>0.0°</span>
-      <button onclick='resetRotation()'>Reset</button>
-    </div>
-    <div class='ctrl-group'>
-      <span class='lbl'>Zoom</span>
-      <input type='range' id='zoom-slider' min='-4' max='3' step='0.05' value='0' style='width: 220px'>
-      <span id='zoom-val'
-        style='min-width: 48px; display: inline-block; text-align: center; font-variant-numeric: tabular-nums; font-size: 13px;'>100%</span>
-      <button onclick='zoomReset()'>Reset</button>
-    </div>
   </div>
 
   <div id='err'></div>
@@ -397,7 +407,25 @@
         <div id='handle-wp' title='White point'></div>
         <div id='handle-bp' title='Black point'></div>
       </div>
-      <button id='levels-auto-btn' onclick='resetLevels()' title='Auto'>A</button>
+      <button id='levels-auto-btn' onclick='resetLevels()' title='Auto levels'>A</button>
+      <div class='panel-divider'></div>
+      <span id='rot-val' title='Current rotation'>0.0°</span>
+      <button class='panel-btn' onclick='nudgeRotation(-0.1)' title='Rotate CW'>
+        <canvas id='icon-cw' width='14' height='14'></canvas>
+      </button>
+      <button class='panel-btn' onclick='nudgeRotation(0.1)' title='Rotate CCW'>
+        <canvas id='icon-ccw' width='14' height='14'></canvas>
+      </button>
+      <div class='panel-divider'></div>
+      <!-- Zoom-to-fit: magnifying glass with outward arrows inside -->
+      <button class='panel-btn' onclick='zoomReset()' title='Fit image to window'>
+        <svg width='14' height='14' viewBox='0 0 14 14' fill='none' xmlns='http://www.w3.org/2000/svg'>
+          <circle cx='6' cy='6' r='4.5' stroke='#444' stroke-width='1.4' />
+          <line x1='9.2' y1='9.2' x2='13' y2='13' stroke='#444' stroke-width='1.5' stroke-linecap='round' />
+          <line x1='4' y1='6' x2='8' y2='6' stroke='#444' stroke-width='1.2' stroke-linecap='round' />
+          <line x1='6' y1='4' x2='6' y2='8' stroke='#444' stroke-width='1.2' stroke-linecap='round' />
+        </svg>
+      </button>
     </div>
   </div>
 
@@ -517,6 +545,19 @@
       finishLoadRaw(raw, w, h);
     }
 
+    function setWrapSize(imgW, imgH) {
+      // Fit the gel window to the image aspect ratio given available page space.
+      // Available width = page width minus some margin; cap height at 75vh.
+      const maxW = Math.min(document.documentElement.clientWidth - 80, 1400 - 80);
+      const panelW = 36; // levels panel
+      const availW = maxW - panelW - 4; // 4px border
+      const maxH = Math.round(window.innerHeight * 0.75);
+      // Compute height that fits width, then clamp
+      let h = Math.round((imgH / imgW) * availW);
+      h = clamp(h, 200, maxH);
+      wrap.style.height = h + 'px';
+    }
+
     function finishLoadRaw(raw, w, h) {
       let mean = 0, n = 0;
       for (let i = 0; i < raw.length; i += 50) { mean += raw[i]; n++; }
@@ -529,12 +570,13 @@
       }
       origW = w; origH = h;
       state.lanes = []; state.selectedLaneId = null; state.selectedBand = null;
+      // Set window size to match image proportions
+      setWrapSize(w, h);
       // Auto-detect rotation
       const angle = autoDetectRotation();
       const clamped = clamp(Math.round(angle * 10) / 10, -10, 10);
       state.autoRotation = clamped;
       state.rotation = clamped;
-      $('rot-slider').value = clamped;
       $('rot-val').textContent = clamped.toFixed(1) + '°';
       applyRotation(clamped);        // also calls detectGelBounds()
       autoInitFromGel();
@@ -585,10 +627,20 @@
     }
 
     function initLevelsCanvas() {
-      const btn = $('levels-auto-btn');
-      const btnH = btn.offsetHeight + 8;
+      const panel = $('levels-panel');
       const wrapH = wrap.getBoundingClientRect().height;
-      const h = Math.max(40, Math.round(wrapH) - btnH - 12);
+      // Measure total height of all panel children except the canvas
+      let fixedH = 0;
+      for (const el of panel.children) {
+        if (el === levelsCv || el === $('levels-handles')) continue;
+        const s = getComputedStyle(el);
+        fixedH += el.offsetHeight
+          + parseFloat(s.marginTop || 0)
+          + parseFloat(s.marginBottom || 0);
+      }
+      const padding = parseFloat(getComputedStyle(panel).paddingTop || 6)
+        + parseFloat(getComputedStyle(panel).paddingBottom || 4);
+      const h = Math.max(30, Math.round(wrapH) - fixedH - padding - 2);
       levelsCv.width = 14;
       levelsCv.height = h;
       drawLevelsGradient();
@@ -836,23 +888,20 @@
     }
 
     let rotateTimer;
-    $('rot-slider').addEventListener('input', e => {
-      const v = parseFloat(e.target.value);
-      $('rot-val').textContent = v.toFixed(1) + '°';
+    function nudgeRotation(delta) {
       clearTimeout(rotateTimer);
+      state.rotation = Math.round((state.rotation + delta) * 10) / 10;
+      $('rot-val').textContent = state.rotation.toFixed(1) + '°';
       rotateTimer = setTimeout(() => {
-        state.rotation = v;
-        applyRotation(v);
+        applyRotation(state.rotation);
         redraw(); updateUI();
-      }, 100);
-    });
+      }, 80);
+    }
 
     function resetRotation() {
-      const v = state.autoRotation;
-      $('rot-slider').value = v;
-      $('rot-val').textContent = v.toFixed(1) + '°';
-      state.rotation = v;
-      applyRotation(v);
+      state.rotation = state.autoRotation;
+      $('rot-val').textContent = state.rotation.toFixed(1) + '°';
+      applyRotation(state.rotation);
       redraw(); updateUI();
     }
 
@@ -878,8 +927,6 @@
       svg.setAttribute('width', dW);
       svg.setAttribute('height', dH);
       svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-      $('zoom-val').textContent = Math.round(state.zoom * 100) + '%';
-      $('zoom-slider').value = Math.log2(state.zoom);
       updatePopups();
     }
     function zoomReset() { zoomFit(); }
@@ -890,6 +937,9 @@
       const fitH = (wRect.height - 4) / H;
       state.zoom = clamp(Math.min(fitW, fitH, 1), ZOOM_MIN, ZOOM_MAX);
       applyZoom();
+      // Center image in the viewport
+      wrap.scrollLeft = Math.max(0, (W * state.zoom - wRect.width) / 2);
+      wrap.scrollTop = Math.max(0, (H * state.zoom - wRect.height) / 2);
     }
     function zoomToRegion(x, y, w, h) {
       const wRect = wrap.getBoundingClientRect();
@@ -900,11 +950,6 @@
       wrap.scrollLeft = Math.max(0, cxImg * state.zoom - wRect.width / 2);
       wrap.scrollTop = Math.max(0, cyImg * state.zoom - wRect.height / 2);
     }
-
-    $('zoom-slider').addEventListener('input', e => {
-      state.zoom = clamp(Math.pow(2, parseFloat(e.target.value)), ZOOM_MIN, ZOOM_MAX);
-      applyZoom();
-    });
 
     svg.addEventListener('wheel', e => {
       if (!e.ctrlKey && !e.metaKey) return;
@@ -1679,12 +1724,12 @@ ${annotationsString(true)}
             origGray = new Float32Array(raw.length);
             for (let i = 0; i < raw.length; i++) origGray[i] = 255 - raw[i];
             origW = img.width; origH = img.height;
+            setWrapSize(origW, origH);
 
             state.filename = cfg.filename || file.name;
             setFilenameDisplay();
             state.rotation = cfg.rotation || 0;
             state.autoRotation = cfg.autoRotation ?? state.rotation;
-            $('rot-slider').value = clamp(state.rotation, -10, 10);
             $('rot-val').textContent = state.rotation.toFixed(1) + '°';
             state.laneW = cfg.laneW || 50;
             state.wellH = cfg.wellH || 25;
@@ -1728,6 +1773,49 @@ ${annotationsString(true)}
       };
       r.readAsText(file);
     }
+
+    function drawRotationIcon(canvas, mirror) {
+      const ctx = canvas.getContext('2d');
+      const cx = canvas.width / 2, cy = canvas.height / 2;
+      const r = 5.3;
+
+      ctx.save();
+      if (mirror) {
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+      }
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 115 * Math.PI / 180, -115 * Math.PI / 180, true);
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 1.5;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      const a = 115 * Math.PI / 180;
+      const baseX = cx + r * Math.cos(a);
+      const baseY = cy - r * Math.sin(a);
+      const tx = -Math.sin(a), ty = -Math.cos(a);
+      const forward = 4, wide = 2.5;
+      const tipX = baseX + forward * tx;
+      const tipY = baseY + forward * ty;
+      const perpX = ty, perpY = -tx;
+
+      ctx.beginPath();
+      ctx.moveTo(baseX + wide * perpX, baseY + wide * perpY);
+      ctx.lineTo(tipX, tipY);
+      ctx.lineTo(baseX - wide * perpX, baseY - wide * perpY);
+      ctx.closePath();
+      ctx.fillStyle = '#333';
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Draw icons once DOM is ready (canvases exist)
+    setTimeout(() => {
+      drawRotationIcon($('icon-cw'), false);
+      drawRotationIcon($('icon-ccw'), true);
+    }, 0);
 
     function updateUI() {
       rebuildLabels(); redraw(); updateTable(); updateProfile(); updatePopups();
@@ -1775,7 +1863,6 @@ ${annotationsString(true)}
         sendHeight();
       }
     }, true);
-
   </script>
 </body>
 
