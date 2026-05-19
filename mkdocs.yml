@@ -6,6 +6,7 @@ docs_dir: protocols
 
 theme:
   name: "material"
+  custom_dir: overrides
   features:
     - navigation.indexes
     - navigation.sections

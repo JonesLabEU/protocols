@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block scripts %}
+  {{ super() }}
+  <script>
+    // Global listener: Watches for ANY iframe in any note sending a resize message
+    window.addEventListener('message', function(event) {
+      if (event.data && event.data.type === 'resize-iframe') {
+        // Find all iframes on the current page
+        const iframes = document.getElementsByTagName('iframe');
+        
+        // Loop through them to find the one matching the source window
+        for (let i = 0; i < iframes.length; i++) {
+          if (iframes[i].contentWindow === event.source) {
+            // Dynamically adjust its height to match its internal content
+            iframes[i].style.height = event.data.height + 'px';
+            break;
+          }
+        }
+      }
+    });
+  </script>
+{% endblock %}
