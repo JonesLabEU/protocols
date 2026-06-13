@@ -21,6 +21,7 @@
 ### SYBR
 - [**SYBR SAFE**](https://www.thermofisher.com/dk/en/home/life-science/dna-rna-purification-analysis/nucleic-acid-gel-electrophoresis/dna-stains/sybr-safe.html)
 	- Theoretical sensitivity: 500 pg
+	- Practical sensitivity (clear band): 100 ng
 - [**SYBR™ Gold**](https://www.thermofisher.com/order/catalog/product/S11494)
 	- Theoretical sensitivity: 25 pg; **picks up ssDNA too** 
 	- Practical sensitivity (clear band): 10 ng

@@ -1,4 +1,13 @@
 # Protein purification
+## Common tags for purification
+- Maltose Binding Protein (MBP) tag – folding and solubility increase (N terminus)
+- His6 / His8 tag – increases the affinity of the protein for the immobilized metal affinity chromatography (IMAC) column (C terminus)
+	- Typically Nickel-NTA columns is used (nickel ions immobilized on the NTA resin)
+	- Binding occurs between histidine imidazole rings and Ni2+
+	- Washed with imidazole that competes with His
+- HRV 3C tag - Leu-Glu-Val-Leu-Phe-Gln-↓-Gly-Pro that is cleaved by a HRV 3C Protease from human rhinovirus type 14
+- TEV - amino acid sequence for protease cleavage
+- Strep/Twin-Strep
 ## Dynabeads His-tag isolation and purification
 ### Overview
 [Source](https://assets.thermofisher.com/TFS-Assets/LSG/manuals/DynabeadsHisTagIsolationPulldown_man.pdf)
