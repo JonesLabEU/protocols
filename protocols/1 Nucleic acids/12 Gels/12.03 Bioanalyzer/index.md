@@ -27,7 +27,7 @@ Samples should be diluted in a lo-bind tube.
 	- Use prepared gel-dye mix within 6 weeks of preparation.
 ### Starting the software
 1. Start the BioAnalyzer software and power on the device itself. All tick marks at the bottom right should be green except for the one that indicates the presence of a chip.
-### Cleaning BioAnalyzer
+### Cleaning BioAnalyzer machine
 1. Slowly fill one of the wells of the electrode cleaner with 350 μL deionized analysis-grade water.   
 2. Open the lid and place the electrode cleaner in the 2100 Bioanalyzer instrument.   
 3. Close the lid and leave it closed for about 10 seconds.    
@@ -37,7 +37,7 @@ Samples should be diluted in a lo-bind tube.
 ### Loading the Gel-Dye Mix 
 1. Allow the gel-dye mix to **equilibrate** to room temperature for **30 min** before use.
 	![|100](assets/image-1.png)
-2. Put a new High Sensitivity DNA chip on the **chip priming station**.
+2. Put a High Sensitivity DNA chip on the **chip priming station**.
 3. Pipette **9 µL of gel-dye mix** in the well marked <span style="background-color:black;font-weight:bold;color:lightgray">G</span> (G in a black circle).
 4. Make sure that the **plunger** is positioned at **1 mL** and then close the chip priming station.
 5. **Press plunger** until it is held by the clip.
@@ -52,7 +52,7 @@ Samples should be diluted in a lo-bind tube.
 ### Loading the Ladder and Samples 
 1. Pipette **1 µL** of <span style="background-color:yellow;font-weight:bold">High Sensitivity DNA ladder (yellow)</span> in the well marked with the **ladder symbol**.
 	![|100](assets/image-4.png)
-2. In each of the 11 sample wells pipette **1 µL of sample (used wells) or 1 µL of marker (unused wells)**.
+2. In each of the 11 sample wells pipette **1 µL of sample (used wells) or <span style="background-color:green;font-weight:bold">1 µL of marker</span> (unused wells)**.
 	![|100](assets/image-5.png)
 3. Put the chip horizontally in the shaker and **vortex for 1 min** at **2400 rpm**.
 4. Run the chip in the 2100 Bioanalyzer instrument within 5 min.
@@ -68,4 +68,9 @@ Samples should be diluted in a lo-bind tube.
 7. Immediately remove the chip after the run. Do not leave it overnight as it may cause contamination of electrodes.
 8. Export with the default settings (need CSV files of the raw data and sample traces).
 ## Reusing the chip
-[gene-quantification.de/nguyen-et-al-chip-reuse-rna-integrity-2014.pdf](https://www.gene-quantification.de/nguyen-et-al-chip-reuse-rna-integrity-2014.pdf)
+1. After run, aspirate liquid from all wells.
+2. Add **20 uL of 1X TAE** to each well and **vigorously pipette** to clean the chip. Discard the liquid.
+3. Add **20 uL  of 1X TAE** to each well.
+4. **Seal** the chip tightly with **parafilm** and store at 4C. Typically the chip remains good for up to five uses.
+
+Source: [gene-quantification.de/nguyen-et-al-chip-reuse-rna-integrity-2014.pdf](https://www.gene-quantification.de/nguyen-et-al-chip-reuse-rna-integrity-2014.pdf)

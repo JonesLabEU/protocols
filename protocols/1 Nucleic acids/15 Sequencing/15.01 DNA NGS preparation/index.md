@@ -104,11 +104,11 @@ Thus, the reads will show either your original sequence or a reverse complement 
 2. Transfer between .5 ng and 1 ug (ideal) of DNA to PCR tubes and adjust volume to 50 uL with Milli-Q.
 3. Prepare master mix **on ice** in a <span style="background-color:skyblue">.5 mL LoBind tube</span> and pipette it **gently** up and down:
 
-| Component                                                 | Per reaction (uL) | Per reaction + 5% (uL) |
-| --------------------------------------------------------- | ----------------- | ---------------------- |
-| <span style="color:green">End Prep Reaction Buffer</span> | 7                 | 7.35                   |
-| <span style="color:green">End Prep Enzyme Mix</span>      | 3                 | 3.15                   |
-| **Total**                                                 | 10                | 10.5                   |
+| Component                                                 | Per reaction (uL) | Per reaction + 10% (uL) |
+| --------------------------------------------------------- | ----------------- | ----------------------- |
+| <span style="color:green">End Prep Reaction Buffer</span> | 7                 | 7.7                     |
+| <span style="color:green">End Prep Enzyme Mix</span>      | 3                 | 3.3                     |
+| **Total**                                                 | 10                | 11                      |
 
 4. Add **10 uL of master mix** to each DNA sample and pipette up and down.
 5. **Incubate** in a thermocycler (60 uL):
@@ -134,7 +134,7 @@ Thus, the reads will show either your original sequence or a reverse complement 
 | <span style="color:red">NEBU2 Ligation Enhancer</span>   | 1.1                    |
 
 3. Add **15 uL of Master Mix** to each DNA sample.
-4. Dilute <span style="color:red">NEBNext Adaptor</span> (from the Index Kit) with NEBNext Adaptor Dilution Buffer according to the DNA amount you have, making sure the final diluted volume is sufficient for all your samples (you'll need **2.3 uL** per sample of **diluted NEBNext Adaptor**).
+4. **Dilute NEBNext Adaptor:** In the next, you'll need **2.3 uL** per sample of diluted NEBNext Adaptor. Dilute <span style="color:red">NEBNext Adaptor</span> (from the Index Kit) with NEBNext Adaptor Dilution Buffer according to the DNA amount you have (see the table below), making sure the final diluted volume is sufficient for all your samples.
 
 | DNA amount (ng) | Dilution |
 | --------------- | -------- |
@@ -142,8 +142,8 @@ Thus, the reads will show either your original sequence or a reverse complement 
 | 5-100           | 10X       |
 | 101-1000        | No dilution        |
 
-5. Add **2.3 uL of NEBNext Adaptor (diluted, Step 4)** to each sample, pipette up and down **gently** and spin down.
-6. **Incubate for 15 min** at room temperature or an open-lid thermocycler set to 20C.
+5. Add **2.3 uL of diluted NEBNext Adaptor** to each sample, pipette up and down **gently** and spin down.
+6. ==**Incubate for 15 min** at room temperature or an open-lid thermocycler set to 20C.==
 7. Add **3 uL of USER enzyme** and gently pipette.
 8. Incubate in a thermocycler (80.3 uL):
 
@@ -181,19 +181,19 @@ Thus, the reads will show either your original sequence or a reverse complement 
 4. **Incubate** at room temperature for 5 min.
 5. In the meantime, make fresh **80% ethanol** (need 200 uL x 2 times x 3 rounds = 1.2 mL per sample):
 
-| Component    | Per reaction + 5% (mL) |
-| ------------ | ---------------------- |
-| 100% ethanol | 1.01                   |
-| Milli-Q      | .25                    |
+| Component    | Per reaction + 10% (mL) |
+| ------------ | ----------------------- |
+| 100% ethanol | 1.056                   |
+| Milli-Q      | .264                    |
 
-6. Place the strip tube inside the magnet rack until supernatant is **clear** (~5 min), then remove and **discard the supernatant**, ensuring no beads are discarded.
-7. Keeping the plate on the magnet, **add 200 uL** freshly prepared 80% ethanol to each sample, wait **30 seconds**, and **discard** ethanol.  
+6. Place the tubes on the magnet rack until supernatant is **clear** (~5 min), then remove and **discard the supernatant**, ensuring no beads are discarded.
+7. Keeping the tubes on the magnet, **add 200 uL** freshly prepared 80% ethanol to each sample, wait **30 seconds**, and **discard** ethanol.  
 8. **Repeat** the previous step. 
 9. **Draw out** any remaining ethanol with a 10 uL pipette. 
 10. **Air-dry** beads for **7 minutes** at room temperature on the magnet with the lids open, but do not let the beads dry out.
 	 - The beads should look brown and glossy. If they look light brown and cracked, you've dried them for too long. This may result in the loss of the recovered DNA amount.
-11. Remove the strip of tubes from the magnet and add **23 uL** (or **53 uL** in Round 2) of **water** to each sample to re-suspend the beads, pipette, and incubate at room temperature for 2 minutes.
-12. Place the strip to the magnet until supernatant is clear (~5 minutes).  
+11. Remove the tubes from the magnet and add **23 uL** (or **53 uL** in Round 2) of **water** to each sample to re-suspend the beads, pipette, and incubate at room temperature for 2 minutes.
+12. Place the tubes on the magnet until supernatant is clear (~5 minutes).  
 13. Transfer **20 uL** (or **50 uL** in Round 2) of each sample to new tubes (PCR tubes for barcoding or 1.5 mL tubes for purification rounds 2 and 3), making sure not to transfer any beads. 
 ### <span style="background-color:blue;color:white">Barcoding (45 min)</span>
 
@@ -215,11 +215,11 @@ Thus, the reads will show either your original sequence or a reverse complement 
 		2. Add **30 uL of the Master Mix** into each sample.
 		3. Choose your Index (i7) primers from an <span style="color:blue">Index Primer Set</span>, note them down, add **5 uL** to each sample, and pipette up and down.
 
-| Component                                                      | Per reaction (uL) | Per reaction + 5% (uL) |
-| -------------------------------------------------------------- | ----------------- | ---------------------- |
-| <span style="color:blue">NEBNext Ultra II Q5 Master Mix</span> | 25                | 26.25                  |
-| <span style="color:blue">Universal (i5) primer</span>          | 5                 | 5.25                   |
-| **Total**                                                      | 30                | 31.5                   |
+| Component                                                      | Per reaction (uL) | Per reaction + 10% (uL) |
+| -------------------------------------------------------------- | ----------------- | ----------------------- |
+| <span style="color:blue">NEBNext Ultra II Q5 Master Mix</span> | 25                | 27.5                    |
+| <span style="color:blue">Universal (i5) primer</span>          | 5                 | 5.5                     |
+| **Total**                                                      | 30                | 33                      |
 
 3. Incubate in a thermocycler (50 uL):
 

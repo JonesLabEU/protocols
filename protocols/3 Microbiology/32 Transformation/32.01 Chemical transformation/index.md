@@ -2,7 +2,9 @@
 ## Overview
 Sterile technique must be strictly observed – work next to an open flame.
 All centrifuge bottles, tubes, solutions, pipets, etc. must be sterile.
-## Materials
+## Chemically competent cell preparation
+### Option 1
+#### Materials
 - E. coli strain
 - 100 mM CaCl2 (ice cold, filter-sterilized)
 - 100 mM CaCl2 with 15% glycerol (filter-sterilized):
@@ -11,8 +13,7 @@ All centrifuge bottles, tubes, solutions, pipets, etc. must be sterile.
 	- 7.11 g Milli-Q
 - LB medium
 - *(Optional)* Antibiotics
-## Procedure
-### Chemically competent cell preparation
+#### Procedure
 *Yields about 4 tubes with 50 uL of chemically competent cells.*
 
 Carry out all steps aseptically.
@@ -36,7 +37,24 @@ Carry out all steps aseptically.
 7. **Resuspend** the first microtube in 200 uL ice cold **CaCl2:glycerol** solution, then transfer to the second microtube and resuspend the other pellet.
 8. Prepare **50 uL** aliquots in sterile microfuge tubes and snap freeze in liquid nitrogen.
 9. Store in -80ºC freezer and use within 3 months.
-### Transformation
+### Option 2
+Quick method to get 1e6 competence.
+Source: [One-step preparation of competent Escherichia coli: transformation and storage of bacterial cells in the same solution](https://pubmed.ncbi.nlm.nih.gov/2648393/)
+#### Materials
+
+| Component  | Amount   |        |
+| ---------- | -------- | ------ |
+| PEG 8000   | 5 g      | .5 g   |
+| MgCl2 (1M) | 1.5 mL   | 150 uL |
+| DMSO       | 2.5 mL   | 250 uL |
+| LB         | to 50 mL | 5 mL   |
+Filter sterilize (0.22 μm filter)
+#### Procedure
+1. Grow E. coli overnight.
+2. Pellet 1 mL by centrifuging 15 sec at 10000 x g, decant the supernatant, and place on ice.
+3. Resuspend the cell pellet in 500 uL ice-cold TSS buffer (usually 10% of the original culture volume).
+4. Vortex to resuspend in 3 pulses 1 sec.
+## Transformation
 1. Prewarm **water bath to 42C.**
 2. Prewarm **1 mL SOC** to **37C.**
 3. **Thaw** a tube containing 50 uL chemically competent cells on ice for **2-5 min** and **gently flick** to resuspend them.
