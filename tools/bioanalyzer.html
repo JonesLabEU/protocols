@@ -717,6 +717,26 @@ text{font-family:-apple-system,Helvetica,Arial,sans-serif}
     ['dragenter', 'dragover'].forEach(ev => document.body.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('hover'); }));
     ['dragleave', 'drop'].forEach(ev => document.body.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('hover'); }));
     document.body.addEventListener('drop', e => handleFile(e.dataTransfer.files[0]));
+
+    function sendHeight() {
+      const height = document.documentElement.scrollHeight || document.body.scrollHeight;
+      window.parent.postMessage({ type: 'resize-iframe', height: height }, '*');
+    }
+
+    // 1. Send height when the page initially loads
+    window.addEventListener('load', sendHeight);
+
+    // 2. Create an observer that watches for ANY changes to the HTML structure
+    // (like an image being inserted or elements expanding)
+    const observer = new MutationObserver(sendHeight);
+    observer.observe(document.body, { attributes: true, childList: true, subtree: true });
+
+    // 3. Fallback: Also trigger it explicitly when images load, just in case
+    document.addEventListener('load', function (e) {
+      if (e.target.tagName === 'XML') {
+        sendHeight();
+      }
+    }, true);
   </script>
 </body>
 
