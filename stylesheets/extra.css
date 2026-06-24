@@ -1,3 +1,4 @@
-.md-header__inner > .mkdocs-toggle-sidebar-button {
+.mkdocs-toggle-sidebar-button {
   order: 99;
+  margin-left: auto;
 }
