@@ -26,7 +26,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - run: pip install mkdocs mkdocs-material mkdocs-git-revision-date-localized-plugin mkdocs-git-authors-plugin pymdown-extensions
+      - run: pip install mkdocs mkdocs-material mkdocs-git-revision-date-localized-plugin mkdocs-git-authors-plugin pymdown-extensions mkdocs-toggle-sidebar-plugin
       - run: mkdocs build --strict
       - run: cp -r tools site/
 
