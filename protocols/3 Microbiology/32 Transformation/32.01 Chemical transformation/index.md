@@ -39,6 +39,7 @@ Carry out all steps aseptically.
 9. Store in -80ºC freezer and use within 3 months.
 ### Option 2
 Quick method to get 1e6 competence.
+
 Source: [One-step preparation of competent Escherichia coli: transformation and storage of bacterial cells in the same solution](https://pubmed.ncbi.nlm.nih.gov/2648393/)
 #### Materials
 
