@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bioanalyzer Gel Viewer</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --panel2: #f1f3f6;
+      --line: #e2e6ea;
+      --txt: #1c2530;
+      --muted: #667085;
+      --accent: #2563eb;
+      --accent2: #d97706;
+      --roi: #2563eb;
+      --trace: #dc2626;
+      --good: #15803d;
+      --bad: #dc2626;
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--txt);
+      font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif
+    }
+
+    .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 20px
+    }
+
+    h1 {
+      font-size: 20px;
+      margin: 0 0 16px
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin-bottom: 18px
+    }
+
+    #file {
+      display: none
+    }
+
+    /* big initial dropzone */
+    #drop {
+      cursor: pointer;
+      transition: .15s
+    }
+
+    #drop.hover {
+      outline: 2px dashed var(--accent);
+      outline-offset: 6px
+    }
+
+    .empty {
+      padding: 56px 20px;
+      text-align: center;
+      color: var(--muted)
+    }
+
+    .empty strong {
+      color: var(--txt);
+      font-size: 16px
+    }
+
+    /* toolbar after load */
+    .tools {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 12px
+    }
+
+    .tools[hidden] {
+      display: none
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--panel2);
+      color: var(--txt);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 13px;
+      cursor: pointer
+    }
+
+    .btn:hover {
+      border-color: var(--accent);
+      color: var(--accent)
+    }
+
+    .chk {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--muted);
+      cursor: pointer
+    }
+
+    .stage {
+      position: relative;
+      width: 100%
+    }
+
+    .stage canvas {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%
+    }
+
+    .stage svg {
+      position: relative;
+      display: block;
+      width: 100%;
+      height: auto
+    }
+
+    /* gel overlay */
+    .axis-lbl {
+      fill: var(--muted);
+      font-size: 10px;
+      text-anchor: end;
+      dominant-baseline: middle
+    }
+
+    .grid {
+      stroke: rgba(0, 0, 0, .10);
+      stroke-width: 1;
+      stroke-dasharray: 2 3
+    }
+
+    .lane-name {
+      fill: var(--txt);
+      font-size: 11px;
+      font-weight: 600;
+      text-anchor: middle
+    }
+
+    .lane-conc {
+      fill: var(--good);
+      font-size: 11px;
+      font-weight: 700;
+      text-anchor: middle
+    }
+
+    .lane-conc.lad {
+      fill: var(--accent2)
+    }
+
+    .lane-border {
+      fill: none;
+      stroke: var(--line);
+      stroke-width: 1
+    }
+
+    .lane-sel {
+      fill: none;
+      stroke: var(--trace);
+      stroke-width: 2
+    }
+
+    .lane-hit {
+      fill: transparent;
+      cursor: pointer
+    }
+
+    .roi-rect {
+      fill: rgba(37, 99, 235, .16);
+      stroke: rgba(37, 99, 235, .5);
+      stroke-width: 1
+    }
+
+    .roi-mid {
+      fill: transparent;
+      cursor: move
+    }
+
+    .roi-edge {
+      stroke: var(--roi);
+      stroke-width: 2.5
+    }
+
+    .roi-edge-hit {
+      stroke: transparent;
+      stroke-width: 14;
+      cursor: ns-resize
+    }
+
+    .tip {
+      font-size: 11px;
+      font-weight: 600;
+      fill: var(--txt);
+      paint-order: stroke;
+      stroke: #fff;
+      stroke-width: 3px;
+      stroke-linejoin: round;
+      text-anchor: middle;
+      pointer-events: none;
+      opacity: 0
+    }
+
+    /* profile */
+    #profilePanel {
+      display: none
+    }
+
+    .phead {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px
+    }
+
+    .phead h2 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--muted)
+    }
+
+    #profileSvg {
+      width: 100%;
+      height: auto;
+      display: block
+    }
+
+    .p-axis text {
+      fill: var(--muted);
+      font-size: 11px
+    }
+
+    .p-axis-title {
+      fill: var(--muted);
+      font-size: 11px
+    }
+
+    .p-grid line {
+      stroke: var(--line);
+      stroke-width: 1
+    }
+
+    .p-trace {
+      fill: none;
+      stroke: var(--trace);
+      stroke-width: 1.5
+    }
+
+    .p-peak {
+      fill: #b91c1c;
+      font-size: 10px;
+      font-weight: 600;
+      text-anchor: middle
+    }
+
+    .p-roi-band {
+      fill: rgba(37, 99, 235, .12)
+    }
+
+    .p-bar {
+      stroke: var(--roi);
+      stroke-width: 2;
+      cursor: ew-resize
+    }
+
+    .p-bar-hit {
+      stroke: transparent;
+      stroke-width: 16;
+      cursor: ew-resize
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <h1>Bioanalyzer Gel Viewer</h1>
+
+    <div class="panel" id="gelPanel">
+      <input type="file" id="file" accept=".xml,text/xml,application/xml">
+
+      <div id="drop">
+        <div id="empty" class="empty">
+          <div><strong>Drop the 2100 chipset XML file here</strong></div>
+          <div style="margin-top:6px">or click to choose</div>
+        </div>
+      </div>
+
+      <div id="gelTools" class="tools" hidden>
+        <button id="exportGel" class="btn">⤓ Export gel</button>
+        <label class="chk"><input type="checkbox" id="showRegions" checked> Show regions</label>
+      </div>
+      <div id="gelArea" hidden>
+        <div class="stage" id="gelStage"><canvas id="gelCanvas"></canvas><svg id="gelSvg"></svg></div>
+      </div>
+    </div>
+
+    <div class="panel" id="profilePanel">
+      <div class="phead">
+        <h2 id="profileTitle">Profile</h2>
+        <button id="exportProfile" class="btn">⤓ Export electropherogram</button>
+      </div>
+      <svg id="profileSvg" viewBox="0 0 1000 280"></svg>
+    </div>
+  </div>
+
+  <script>
+    "use strict";
+
+    const LADDER_TICKS = [35, 50, 100, 200, 300, 500, 700, 1000, 2000, 3000, 7000, 10380];
+    const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+    const SVGNS = "http://www.w3.org/2000/svg";
+    const state = { samples: [], lanes: [], ladder: null, selected: null, showRegions: true };
+
+    /* ============================ XML PARSING ============================ */
+    function childText(el, tag) { if (!el) return null; for (const c of el.children) if (c.tagName === tag) return c.textContent; return null; }
+    function num(el, tag) { const t = childText(el, tag); return t == null ? null : parseFloat(t); }
+    function decodeFloats(b64, n) {
+      const bin = atob(b64.trim()), buf = new ArrayBuffer(bin.length), bytes = new Uint8Array(buf);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const dv = new DataView(buf), out = new Float32Array(n);
+      for (let i = 0; i < n && (i * 4 + 4) <= bin.length; i++) out[i] = dv.getFloat32(i * 4, true);
+      return out;
+    }
+    function parseXML(text) {
+      const doc = new DOMParser().parseFromString(text, "application/xml");
+      if (doc.getElementsByTagName("parsererror").length) throw new Error("Invalid XML file.");
+      const sampleEls = [...doc.getElementsByTagName("Sample")].filter(s => s.getAttribute("key") != null
+        && s.getElementsByTagName("PeaksMolecular").length);
+      const samples = [];
+      for (const s of sampleEls) {
+        const name = childText(s, "Name") || ("Well " + (childText(s, "WellNumber") || "?"));
+        const category = childText(s, "Category") || "";
+        const pmol = s.getElementsByTagName("PeaksMolecular")[0];
+        const peaks = [];
+        for (const p of pmol.getElementsByTagName("PeakMolecular")) {
+          const size = num(p, "FragmentSize"), mt = num(p, "MigrationTime"), area = num(p, "Area");
+          const obs = (childText(p, "Observations") || "").trim();
+          if (size == null || mt == null || area == null || mt <= 0) continue;
+          peaks.push({
+            size, mt, area, height: num(p, "Height"),
+            isLower: /Lower Marker/i.test(obs), isUpper: /Upper Marker/i.test(obs)
+          });
+        }
+        peaks.sort((a, b) => a.mt - b.mt);
+        let sig = null;
+        for (const sd of s.getElementsByTagName("SignalData")) {
+          if (childText(sd, "ChannelID") !== "RedFluorescence") continue;
+          const rs = sd.getElementsByTagName("RawSignal")[0]; if (!rs) continue;
+          const nv = parseInt(rs.getAttribute("numvalues"), 10); if (!nv) continue;
+          sig = { xStep: num(sd, "XStep") || 0.05, v: decodeFloats(rs.textContent, nv) }; break;
+        }
+        if (!peaks.length || !sig) continue;
+        samples.push({
+          name, category, peaks, sig,
+          isLadder: /ladder/i.test(name) || /ladder/i.test(category),
+          upper: peaks.find(p => p.isUpper), lower: peaks.find(p => p.isLower)
+        });
+      }
+      return samples;
+    }
+
+    /* ============================ SIGNAL / MODEL ============================ */
+    function smooth(v, w) {
+      const n = v.length, h = w >> 1, out = new Float64Array(n);
+      for (let i = 0; i < n; i++) { let s = 0, c = 0; for (let j = i - h; j <= i + h; j++) { if (j >= 0 && j < n) { s += v[j]; c++; } } out[i] = s / c; } return out;
+    }
+    function baselineCorrect(v) {
+      const n = v.length, W = Math.max(20, Math.round(n * 0.045)), rmin = new Float64Array(n);
+      for (let i = 0; i < n; i++) { let m = Infinity; for (let j = Math.max(0, i - W); j <= Math.min(n - 1, i + W); j++)if (v[j] < m) m = v[j]; rmin[i] = m; }
+      const base = smooth(rmin, W), out = new Float64Array(n); for (let i = 0; i < n; i++)out[i] = v[i] - base[i]; return out;
+    }
+    function makeInterp(xs, ys) {
+      return x => {
+        if (x <= xs[0]) return ys[0]; if (x >= xs[xs.length - 1]) return ys[ys.length - 1];
+        let i = 0; while (xs[i + 1] < x) i++; const f = (x - xs[i]) / (xs[i + 1] - xs[i]); return ys[i] + f * (ys[i + 1] - ys[i]);
+      };
+    }
+    const TC = p => p.area / p.mt;
+
+    function buildModel() {
+      state.ladder = state.samples.find(s => s.isLadder) || null;
+      if (!state.ladder) return { ok: false, msg: "No Ladder sample found." };
+      if (!state.ladder.upper) return { ok: false, msg: "Ladder upper marker not found." };
+      const lad = state.ladder, pts = lad.peaks.slice().sort((a, b) => a.size - b.size);
+      state.ladTCsize = makeInterp(pts.map(p => p.size), pts.map(p => TC(p)));
+      state.TC_UMl = TC(lad.upper);
+      state.minSize = lad.lower ? lad.lower.size : pts[0].size;
+      state.maxSize = lad.upper.size;
+      state.logMin = Math.log10(state.minSize); state.logMax = Math.log10(state.maxSize);
+      let gmax = 0;
+      for (const s of state.samples) {
+        const sp = s.peaks.slice().sort((a, b) => a.mt - b.mt);
+        const timeToSize = makeInterp(sp.map(p => p.mt), sp.map(p => p.size));
+        s.minSize = s.lower ? s.lower.size : sp[0].size;
+        s.maxSize = s.upper ? s.upper.size : sp[sp.length - 1].size;
+        s.vc = baselineCorrect(s.sig.v);
+        s.TC_UMs = s.upper ? TC(s.upper) : null;
+        const sa = [], va = []; let last = -Infinity;
+        for (let i = 0; i < s.vc.length; i++) {
+          const sz = timeToSize(i * s.sig.xStep);
+          if (sz <= last) continue; last = sz; sa.push(sz); va.push(s.vc[i]);
+        }
+        s.sizeArr = sa; s.valArr = va;
+        for (const x of va) if (x > gmax) gmax = x;
+      }
+      state.Imax = gmax || 1;
+      state.lanes = [state.ladder, ...state.samples.filter(s => !s.isLadder)];
+      return { ok: true, n: state.samples.length };
+    }
+    function valAtSize(s, size) {
+      const a = s.sizeArr; if (!a.length || size < a[0] || size > a[a.length - 1]) return 0;
+      let lo = 0, hi = a.length - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (a[m] < size) lo = m; else hi = m; }
+      const f = (size - a[lo]) / ((a[hi] - a[lo]) || 1); return s.valArr[lo] + f * (s.valArr[hi] - s.valArr[lo]);
+    }
+    function peakConc(s, p) {
+      if (!s.TC_UMs || !state.TC_UMl) return NaN;
+      const lt = state.ladTCsize(p.size); if (!(lt > 0)) return NaN;
+      return (TC(p) / s.TC_UMs) * (state.TC_UMl / lt) * 150 / 1000;
+    }
+    function regionResult(s) {
+      const lo = Math.min(s.roi.lo, s.roi.hi), hi = Math.max(s.roi.lo, s.roi.hi);
+      const inroi = s.peaks.filter(p => !p.isUpper && !p.isLower && p.size >= lo && p.size <= hi);
+      let conc = 0, ok = s.TC_UMs != null;
+      for (const p of inroi) { const c = peakConc(s, p); if (Number.isFinite(c)) conc += c; else ok = false; }
+      return { lo, hi, n: inroi.length, conc: ok ? conc : NaN };
+    }
+
+    /* ============================ GEL ============================ */
+    function E(tag, attrs) { const e = document.createElementNS(SVGNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
+    const GEL = { mT: 48, mL: 54, mB: 20, laneW: 62, gap: 12, plotH: 430 };
+    function laneX(i) { return GEL.mL + i * (GEL.laneW + GEL.gap); }
+    function gelDims() {
+      const n = state.lanes.length;
+      return { W: GEL.mL + n * (GEL.laneW + GEL.gap) + 8, H: GEL.mT + GEL.plotH + GEL.mB, top: GEL.mT, bot: GEL.mT + GEL.plotH };
+    }
+    function Ysize(size) {
+      const d = gelDims();
+      return d.top + (1 - (Math.log10(size) - state.logMin) / (state.logMax - state.logMin)) * (d.bot - d.top);
+    }
+    function YtoSize(py) {
+      const d = gelDims();
+      return Math.pow(10, state.logMin + (1 - (py - d.top) / (d.bot - d.top)) * (state.logMax - state.logMin));
+    }
+
+    function drawGelBands() {
+      const d = gelDims(), cv = document.getElementById('gelCanvas'), dpr = window.devicePixelRatio || 1;
+      cv.width = d.W * dpr; cv.height = d.H * dpr;
+      const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, d.W, d.H);
+      const H = Math.round(d.bot - d.top);
+      state.lanes.forEach((s, li) => {
+        const x0 = laneX(li);
+        for (let r = 0; r < H; r++) {
+          const inten = Math.min(1, Math.pow(Math.max(0, valAtSize(s, YtoSize(d.top + r + 0.5))) / state.Imax, 0.5));
+          const g = Math.round(255 - inten * 235);
+          ctx.fillStyle = `rgb(${g},${g},${g})`; ctx.fillRect(x0, d.top + r, GEL.laneW, 1);
+        }
+      });
+    }
+    function renderGel() {
+      drawGelBands();
+      const d = gelDims(), svg = document.getElementById('gelSvg');
+      document.getElementById('gelStage').style.maxWidth = d.W + 'px';   // shrink to fit, never upscale
+      svg.setAttribute('viewBox', `0 0 ${d.W} ${d.H}`); svg.setAttribute('preserveAspectRatio', 'xMinYMin meet');
+      svg.innerHTML = '';
+      for (const p of state.ladder.peaks) {
+        const y = Ysize(p.size);
+        svg.appendChild(E('line', { class: 'grid', x1: GEL.mL, y1: y, x2: d.W - 8, y2: y }));
+        const t = E('text', { class: 'axis-lbl', x: GEL.mL - 8, y: y }); t.textContent = p.size; svg.appendChild(t);
+      }
+      const yt = E('text', { class: 'axis-lbl', x: GEL.mL - 8, y: d.top - 16 }); yt.textContent = 'bp'; svg.appendChild(yt);
+      state.lanes.forEach((s, li) => buildLane(svg, s, li, d));
+      markSelection();
+    }
+    function buildLane(svg, s, li, d) {
+      const x0 = laneX(li), cx = x0 + GEL.laneW / 2;
+      if (!s.roi) s.roi = { lo: clamp(200, state.minSize, state.maxSize), hi: clamp(400, state.minSize, state.maxSize) };
+      const nm = E('text', { class: 'lane-name', x: cx, y: 16 }); nm.textContent = s.isLadder ? 'Ladder' : s.name; svg.appendChild(nm);
+      if (s.isLadder) { s._conc = () => { }; }
+      else {
+        const conc = E('text', { class: 'lane-conc', x: cx, y: 32 }); svg.appendChild(conc);
+        s._conc = () => { const r = regionResult(s); conc.textContent = Number.isFinite(r.conc) ? r.conc.toFixed(3) + ' ng/µL' : '—'; };
+        s._conc();
+      }
+      svg.appendChild(E('rect', { class: 'lane-border', x: x0, y: d.top, width: GEL.laneW, height: d.bot - d.top }));
+      const hit = E('rect', { class: 'lane-hit', x: x0, y: d.top, width: GEL.laneW, height: d.bot - d.top });
+      hit.addEventListener('click', () => selectLane(s)); svg.appendChild(hit);
+
+      if (!state.showRegions || s.isLadder) { s._place = () => { }; return; }
+      const rect = E('rect', { class: 'roi-rect', x: x0, width: GEL.laneW });
+      const mid = E('rect', { class: 'roi-mid', x: x0, width: GEL.laneW });
+      const eTop = E('line', { class: 'roi-edge', x1: x0, x2: x0 + GEL.laneW });
+      const eBot = E('line', { class: 'roi-edge', x1: x0, x2: x0 + GEL.laneW });
+      const hTop = E('line', { class: 'roi-edge-hit', x1: x0, x2: x0 + GEL.laneW });
+      const hBot = E('line', { class: 'roi-edge-hit', x1: x0, x2: x0 + GEL.laneW });
+      const tip = E('text', { class: 'tip', x: cx });
+      [rect, mid, eTop, eBot, hTop, hBot, tip].forEach(el => svg.appendChild(el));
+      s._place = () => {
+        const yHi = Ysize(s.roi.hi), yLo = Ysize(s.roi.lo), h = Math.max(1, yLo - yHi);
+        rect.setAttribute('y', yHi); rect.setAttribute('height', h);
+        mid.setAttribute('y', yHi); mid.setAttribute('height', h);
+        eTop.setAttribute('y1', yHi); eTop.setAttribute('y2', yHi); hTop.setAttribute('y1', yHi); hTop.setAttribute('y2', yHi);
+        eBot.setAttribute('y1', yLo); eBot.setAttribute('y2', yLo); hBot.setAttribute('y1', yLo); hBot.setAttribute('y2', yLo);
+      };
+      s._place();
+      const showTip = (size, y) => { tip.textContent = Math.round(size) + ' bp'; tip.setAttribute('y', clamp(y - 6, d.top + 10, d.bot)); tip.style.opacity = 1; };
+      function startDrag(mode) {
+        return ev => {
+          ev.preventDefault(); ev.stopPropagation(); selectLane(s);
+          const tg = ev.currentTarget; try { tg.setPointerCapture(ev.pointerId); } catch (_) { }
+          const c2y = cy => { const r = svg.getBoundingClientRect(); return (cy - r.top) / r.height * d.H; };
+          const startSize = YtoSize(c2y(ev.clientY)), startLo = s.roi.lo, startHi = s.roi.hi;
+          const move = e => {
+            const cy = e.touches ? e.touches[0].clientY : e.clientY, sz = YtoSize(c2y(cy));
+            if (mode === 'hi') { s.roi.hi = clamp(sz, s.roi.lo * 1.02, state.maxSize); showTip(s.roi.hi, Ysize(s.roi.hi)); }
+            else if (mode === 'lo') { s.roi.lo = clamp(sz, state.minSize, s.roi.hi * 0.98); showTip(s.roi.lo, Ysize(s.roi.lo)); }
+            else {
+              let shift = Math.log10(sz) - Math.log10(startSize); const span = Math.log10(startHi) - Math.log10(startLo);
+              let lo = Math.log10(startLo) + shift, hi = Math.log10(startHi) + shift;
+              if (lo < state.logMin) { lo = state.logMin; hi = lo + span; } if (hi > state.logMax) { hi = state.logMax; lo = hi - span; }
+              s.roi.lo = Math.pow(10, lo); s.roi.hi = Math.pow(10, hi); showTip(s.roi.lo, Ysize(s.roi.lo));
+            }
+            syncRegion(s);
+          };
+          const up = () => {
+            tip.style.opacity = 0;
+            tg.removeEventListener('pointermove', move); tg.removeEventListener('pointerup', up);
+            window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up);
+          };
+          tg.addEventListener('pointermove', move); tg.addEventListener('pointerup', up);
+          window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+        };
+      }
+      hTop.addEventListener('pointerdown', startDrag('hi'));
+      hBot.addEventListener('pointerdown', startDrag('lo'));
+      mid.addEventListener('pointerdown', startDrag('mid'));
+    }
+    function markSelection() {
+      const svg = document.getElementById('gelSvg'), d = gelDims();
+      const old = svg.querySelector('.lane-sel'); if (old) old.remove();
+      const li = state.lanes.indexOf(state.selected); if (li < 0) return;
+      svg.appendChild(E('rect', { class: 'lane-sel', x: laneX(li) - 2, y: d.top - 2, width: GEL.laneW + 4, height: d.bot - d.top + 4 }));
+    }
+
+    /* ============================ PROFILE ============================ */
+    const P = { W: 1000, H: 280, mL: 56, mR: 18, mT: 34, mB: 36 };
+    function renderProfile(s) {
+      const svg = document.getElementById('profileSvg'); svg.innerHTML = '';
+      document.getElementById('profilePanel').style.display = 'block';
+      document.getElementById('profileTitle').textContent = (s.isLadder ? 'Ladder' : s.name) + ' — electropherogram';
+      const xmin = Math.log10(s.minSize), xmax = Math.log10(s.maxSize), pW = P.W - P.mL - P.mR, pH = P.H - P.mT - P.mB;
+      const sx = sz => P.mL + (Math.log10(sz) - xmin) / (xmax - xmin) * pW;
+      const x2size = px => Math.pow(10, clamp(xmin + (px - P.mL) / pW * (xmax - xmin), xmin, xmax));
+      const pts = []; for (let i = 0; i < s.sizeArr.length; i++) {
+        const sz = s.sizeArr[i];
+        if (sz >= s.minSize && sz <= s.maxSize) pts.push({ sz, y: s.valArr[i] });
+      }
+      const vmax = Math.max(1, ...pts.map(p => p.y)), vmin = Math.min(0, ...pts.map(p => p.y));
+      const Y = v => P.mT + (1 - (v - vmin) / (vmax - vmin)) * pH;
+
+      const grid = E('g', { class: 'p-grid' }), axis = E('g', { class: 'p-axis' });
+      for (const tk of LADDER_TICKS) {
+        if (tk < s.minSize || tk > s.maxSize) continue; const x = sx(tk);
+        grid.appendChild(E('line', { x1: x, y1: P.mT, x2: x, y2: P.mT + pH }));
+        const t = E('text', { x: x, y: P.H - P.mB + 14, 'text-anchor': 'middle' }); t.textContent = tk; axis.appendChild(t);
+      }
+      for (let k = 0; k <= 4; k++) {
+        const val = vmin + (vmax - vmin) * k / 4, y = Y(val);
+        grid.appendChild(E('line', { x1: P.mL, y1: y, x2: P.mL + pW, y2: y }));
+        const t = E('text', { x: P.mL - 8, y: y + 3, 'text-anchor': 'end' }); t.textContent = Math.round(val); axis.appendChild(t);
+      }
+      svg.appendChild(grid);
+      const xl = E('text', { x: P.mL + pW / 2, y: P.H - 2, 'text-anchor': 'middle', class: 'p-axis-title' }); xl.textContent = 'Size (bp)'; svg.appendChild(xl);
+      const yl = E('text', { x: 14, y: P.mT + pH / 2, 'text-anchor': 'middle', class: 'p-axis-title', transform: `rotate(-90 14 ${P.mT + pH / 2})` }); yl.textContent = 'Fluorescence (FU)'; svg.appendChild(yl);
+
+      let d = ''; for (let i = 0; i < pts.length; i++) d += (i ? 'L' : 'M') + sx(pts[i].sz).toFixed(1) + ' ' + Y(pts[i].y).toFixed(1) + ' ';
+      svg.appendChild(E('path', { class: 'p-trace', d }));
+      svg.appendChild(axis);
+
+      const maxH = Math.max(...s.peaks.map(p => p.height || 0), 1);
+      for (const p of s.peaks) {
+        if (p.isUpper || p.isLower || (p.height || 0) < 0.06 * maxH || p.size < s.minSize || p.size > s.maxSize) continue;
+        const x = sx(p.size); let ly = Y(valAtSize(s, p.size)) - 6;
+        if (ly < P.mT + 12) ly = P.mT - 5;                 // tall peak: label outside the plot axes
+        const t = E('text', { class: 'p-peak', x: x, y: ly }); t.textContent = Math.round(p.size); svg.appendChild(t);
+      }
+
+      if (state.showRegions && !s.isLadder) {
+        const band = E('rect', { class: 'p-roi-band', y: P.mT, height: pH });
+        const bLo = E('line', { class: 'p-bar', y1: P.mT, y2: P.mT + pH }), bHi = E('line', { class: 'p-bar', y1: P.mT, y2: P.mT + pH });
+        const hLo = E('line', { class: 'p-bar-hit', y1: P.mT, y2: P.mT + pH }), hHi = E('line', { class: 'p-bar-hit', y1: P.mT, y2: P.mT + pH });
+        const tip = E('text', { class: 'tip', y: P.mT + 12 });
+        [band, hLo, hHi, bLo, bHi, tip].forEach(el => svg.appendChild(el));
+        state.profilePlace = () => {
+          const xlo = sx(s.roi.lo), xhi = sx(s.roi.hi);
+          bLo.setAttribute('x1', xlo); bLo.setAttribute('x2', xlo); hLo.setAttribute('x1', xlo); hLo.setAttribute('x2', xlo);
+          bHi.setAttribute('x1', xhi); bHi.setAttribute('x2', xhi); hHi.setAttribute('x1', xhi); hHi.setAttribute('x2', xhi);
+          band.setAttribute('x', Math.min(xlo, xhi)); band.setAttribute('width', Math.abs(xhi - xlo));
+        };
+        state.profilePlace();
+        const showTip = (size, x) => { tip.textContent = Math.round(size) + ' bp'; tip.setAttribute('x', clamp(x, P.mL + 14, P.W - P.mR - 14)); tip.style.opacity = 1; };
+        function drag(which) {
+          return ev => {
+            ev.preventDefault(); ev.stopPropagation();
+            const tg = ev.currentTarget; try { tg.setPointerCapture(ev.pointerId); } catch (_) { }
+            const c2x = cx => { const r = svg.getBoundingClientRect(); return (cx - r.left) / r.width * P.W; };
+            const move = e => {
+              const cx = e.touches ? e.touches[0].clientX : e.clientX; let sz = x2size(c2x(cx));
+              if (which === 'lo') s.roi.lo = clamp(sz, s.minSize, s.roi.hi * 0.98); else s.roi.hi = clamp(sz, s.roi.lo * 1.02, s.maxSize);
+              showTip(which === 'lo' ? s.roi.lo : s.roi.hi, sx(which === 'lo' ? s.roi.lo : s.roi.hi)); syncRegion(s);
+            };
+            const up = () => {
+              tip.style.opacity = 0;
+              tg.removeEventListener('pointermove', move); tg.removeEventListener('pointerup', up);
+              window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up);
+            };
+            tg.addEventListener('pointermove', move); tg.addEventListener('pointerup', up);
+            window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+          };
+        }
+        hLo.addEventListener('pointerdown', drag('lo')); bLo.addEventListener('pointerdown', drag('lo'));
+        hHi.addEventListener('pointerdown', drag('hi')); bHi.addEventListener('pointerdown', drag('hi'));
+      } else { state.profilePlace = null; }
+    }
+
+    /* ============================ COUPLING ============================ */
+    function syncRegion(s) { if (s._place) s._place(); if (s._conc) s._conc(); if (state.selected === s && state.profilePlace) state.profilePlace(); }
+    function selectLane(s) { state.selected = s; markSelection(); renderProfile(s); }
+
+    /* ============================ EXPORT ============================ */
+    const EXPORT_CSS = `
+text{font-family:-apple-system,Helvetica,Arial,sans-serif}
+.axis-lbl{fill:#667085;font-size:10px;text-anchor:end;dominant-baseline:middle}
+.grid{stroke:rgba(0,0,0,.10);stroke-width:1;stroke-dasharray:2 3}
+.lane-name{fill:#1c2530;font-size:11px;font-weight:600;text-anchor:middle}
+.lane-conc{fill:#15803d;font-size:11px;font-weight:700;text-anchor:middle}
+.lane-conc.lad{fill:#d97706}
+.lane-border{fill:none;stroke:#e2e6ea;stroke-width:1}
+.roi-rect{fill:rgba(37,99,235,.16);stroke:rgba(37,99,235,.5);stroke-width:1}
+.roi-edge{stroke:#2563eb;stroke-width:2.5}
+.p-grid line{stroke:#e2e6ea;stroke-width:1}
+.p-axis text{fill:#667085;font-size:11px}.p-axis-title{fill:#667085;font-size:11px}
+.p-trace{fill:none;stroke:#dc2626;stroke-width:1.5}
+.p-peak{fill:#b91c1c;font-size:10px;font-weight:600;text-anchor:middle}
+.p-roi-band{fill:rgba(37,99,235,.12)}.p-bar{stroke:#2563eb;stroke-width:2}`;
+    function exportSVG(svg, w, h, bgCanvas, filename) {
+      const clone = svg.cloneNode(true);
+      clone.querySelectorAll('.lane-hit,.lane-sel,.roi-mid,.roi-edge-hit,.p-bar-hit,.tip').forEach(n => n.remove());
+      const st = document.createElementNS(SVGNS, 'style'); st.textContent = EXPORT_CSS; clone.insertBefore(st, clone.firstChild);
+      clone.setAttribute('xmlns', SVGNS); clone.setAttribute('width', w); clone.setAttribute('height', h);
+      const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(clone)], { type: 'image/svg+xml;charset=utf-8' }));
+      const img = new Image();
+      img.onload = () => {
+        const sc = 2, c = document.createElement('canvas'); c.width = w * sc; c.height = h * sc;
+        const ctx = c.getContext('2d'); ctx.scale(sc, sc); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+        if (bgCanvas) ctx.drawImage(bgCanvas, 0, 0, w, h); ctx.drawImage(img, 0, 0, w, h); URL.revokeObjectURL(url);
+        const a = document.createElement('a'); a.download = filename; a.href = c.toDataURL('image/png'); a.click();
+      };
+      img.src = url;
+    }
+
+    /* ============================ LOAD / WIRING ============================ */
+    function run(text) {
+      let samples; try { samples = parseXML(text); } catch (e) { alert(e.message); return; }
+      if (!samples.length) { alert("No samples with peaks + signal found."); return; }
+      state.samples = samples;
+      const m = buildModel(); if (!m.ok) { alert(m.msg); return; }
+      document.getElementById('drop').hidden = true;
+      document.getElementById('gelTools').hidden = false;
+      document.getElementById('gelArea').hidden = false;
+      renderGel();
+      selectLane(state.lanes.find(s => !s.isLadder) || state.lanes[0]);
+    }
+    function handleFile(f) {
+      if (!f) return;
+      state.xmlBase = f.name.replace(/\.xml$/i, ''); const r = new FileReader(); r.onload = () => run(r.result); r.readAsText(f);
+    }
+    const safe = s => String(s).replace(/[\/\\:*?"<>|]+/g, '_');
+
+    const drop = document.getElementById('drop'), fileInput = document.getElementById('file');
+    fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+    drop.addEventListener('click', () => fileInput.click());
+    document.getElementById('exportGel').addEventListener('click', () => {
+      const d = gelDims();
+      exportSVG(document.getElementById('gelSvg'), d.W, d.H, document.getElementById('gelCanvas'), `${safe(state.xmlBase)}_Gel.png`);
+    });
+    document.getElementById('exportProfile').addEventListener('click', () => {
+      if (state.selected)
+        exportSVG(document.getElementById('profileSvg'), P.W, P.H, null, `${safe(state.xmlBase)}_${safe(state.selected.name)}.png`);
+    });
+    document.getElementById('showRegions').addEventListener('change', e => {
+      state.showRegions = e.target.checked;
+      renderGel(); if (state.selected) renderProfile(state.selected);
+    });
+    ['dragenter', 'dragover'].forEach(ev => document.body.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('hover'); }));
+    ['dragleave', 'drop'].forEach(ev => document.body.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('hover'); }));
+    document.body.addEventListener('drop', e => handleFile(e.dataTransfer.files[0]));
+  </script>
+</body>
+
+</html>

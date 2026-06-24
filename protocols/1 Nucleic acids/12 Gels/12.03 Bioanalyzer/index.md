@@ -74,3 +74,6 @@ Samples should be diluted in a lo-bind tube.
 4. **Seal** the chip tightly with **parafilm** and store at 4C. Typically the chip remains good for up to five uses.
 
 Source: [gene-quantification.de/nguyen-et-al-chip-reuse-rna-integrity-2014.pdf](https://www.gene-quantification.de/nguyen-et-al-chip-reuse-rna-integrity-2014.pdf)
+
+# Analysis
+<iframe id="dynamic-frame" src="../../../tools/bioanalyzer.html" style="width: 100%; height: 600px; border: none; scrolling: no; overflow: hidden;"> </iframe>
