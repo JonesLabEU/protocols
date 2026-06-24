@@ -1,0 +1,3 @@
+.md-header__inner > .mkdocs-toggle-sidebar-button {
+  order: 99;
+}

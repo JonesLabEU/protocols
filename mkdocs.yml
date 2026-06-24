@@ -36,7 +36,8 @@ extra_javascript:
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
   # - https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js
   # - https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js
-# extra_css:
+extra_css:
+  - stylesheets/extra.css
 #   - https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css
 
 repo_url: https://github.com/JonesLabEU/protocols
@@ -51,3 +52,10 @@ plugins:
       show_toc_by_default: True
       toggle_button: toc
       theme: material
+      # Source: https://www.svgrepo.com/svg/513853/sidebar-right
+      # Vectors and icons by <a href="https://www.svgrepo.com/author/Vaneet%20Thakur/" target="_blank">Vaneet Thakur</a> in CC Attribution License via <a href="https://www.svgrepo.com/" target="_blank">SVG Repo</a>
+      button_toggle_icon: |
+        <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <rect x="3" y="3" width="18" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+          <line x1="15" y1="3" x2="15" y2="21" stroke="currentColor" stroke-width="2"/>
+        </svg>
