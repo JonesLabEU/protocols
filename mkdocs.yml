@@ -47,3 +47,7 @@ plugins:
       enable_creation_date: true
   - git-authors
   - search
+  - toggle-sidebar:
+      show_toc_by_default: True
+      toggle_button: toc
+      theme: material
