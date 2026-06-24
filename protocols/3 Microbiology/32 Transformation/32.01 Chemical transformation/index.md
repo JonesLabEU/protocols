@@ -48,6 +48,7 @@ Source: [One-step preparation of competent Escherichia coli: transformation and 
 | MgCl2 (1M) | 1.5 mL   | 150 uL |
 | DMSO       | 2.5 mL   | 250 uL |
 | LB         | to 50 mL | 5 mL   |
+
 Filter sterilize (0.22 μm filter)
 #### Procedure
 1. Grow E. coli overnight.
