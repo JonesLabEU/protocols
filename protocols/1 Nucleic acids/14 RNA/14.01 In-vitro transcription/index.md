@@ -19,11 +19,14 @@
 |                |                        | TAA TAC GAC TCA CTA TT**A GG**   | II    | 200-300             | 99         | Used for ApG initiation |
 | T3             | E. coli                | AAT TAA CCC TCA CTA AA**G GG**   |       | 200-300             |            |                         |
 | SP6            | Salmonella typhimurium | ATT TAG GT/GG ACA CTA TA**G AA** |       |                     |            |                         |
+
 **Transcription product:**
+
 - Starts at the first bold nucleotide in the table above; the first two GG's are critical for T7
 - Has 3 phosphates at 5' end: 5'-ppp**GGG**...
 
 **Transcription template:**
+
 - Plasmid – best for high yields; must linearize for a run-off transcription
 - PCR product
 	- Digest 3' end such that DNA template on the antisense strand would end exactly where you want RNA to end
@@ -34,11 +37,13 @@ Must be as pure as possible (no RNases, SDS, EDTA, proteins, RNA). T7 and SP6 RN
 NaCl or KCl concentrations above 150 mM and T3 RNA Polymerase at above 250 mM.
 
 **Terminators:**
+
 - **Rho-dependent terminator** that forms a 7-20 base pair hairpin, followed by a U-rich stretch
 - **Run-off** where RNAP falls off at the end of the template
 	- T7 might incorporate one or several non-templated nucleotides at 5' end
 
 **Errors:**
+
 - 5':
 	- More G inserted if 5-6 G's are present at 5' of the template
 	- Might skip 1-2 nucleotides or add an additional purine if the template starts with CAC/G
@@ -49,6 +54,7 @@ NaCl or KCl concentrations above 150 mM and T3 RNA Polymerase at above 250 mM.
 - Short abortive transcripts (9-12 nt) during initiation. Thus, if doing radioactive labelling, avoid using (alpha32-P)GTP as 5' tail is G-rich and your GTP resource might be depleted too fast.
 
 **Modifications:**
+
 - 5'-OH: Initiate with guanosine
 - 5'-monophosphate: Initiate with GMP. Monophosphates are easier to dephosphorylate than triphosphates
 - 5' cap: Initiate with ApG or 7-methylguanosine
@@ -104,6 +110,7 @@ NaCl or KCl concentrations above 150 mM and T3 RNA Polymerase at above 250 mM.
 [MEGAscript](https://assets.thermofisher.com/TFS-Assets%2FLSG%2Fmanuals%2F1330M_G.pdf)
 
 Required **template DNA**: .5-2 pmol. Typically this translates into the following amounts:
+
 - PCR-product template: 0.1–0.2 μg
 - Linearized plasmid template: ~1 μg (assuming plasmid size of about 5.5 kbp with a 1.85 kbp gene)
 - If the template is short (≤500 bp) and within a plasmid, it may not be possible to have enough of it within the volume limits and also large DNA amounts might be detrimental to the reaction. Consider cutting out the template from the plasmid.
@@ -138,11 +145,13 @@ Required **template DNA**: .5-2 pmol. Typically this translates into the followi
 100 ug per 20 uL = 8 uM
 
 If yield is low, it may be due to residual RNases or other inhibitors from miniprep or digestion. Thus:
+
 - Treat the template DNA with proteinase K (100–200 μg/mL) and 0.5% SDS for 30 min at 50°C
 - Perform phenol/chloroform extraction (using an equal volume) and ethanol precipitation.
 
 ## TranscriptAid T7 High Yield Transcription Kit
 [TranscriptAid](https://assets.thermofisher.com/TFS-Assets/LSG/manuals/MAN0012652_TranscriptAid_T7_High_Yield_Transcription_UG.pdf)
+
 1. **Thaw** all frozen reaction components, **mix** and **centrifuge** briefly to collect all drops.
 	- Keep TranscriptAid **Enzyme Mix and nucleotides on ice**.
 	- Keep the 5X TranscriptAid Reaction **Buffer at room temperature**.
