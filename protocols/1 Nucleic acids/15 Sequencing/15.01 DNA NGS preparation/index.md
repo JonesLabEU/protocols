@@ -248,5 +248,5 @@ Thus, the reads will show either your original sequence or a reverse complement 
 1. Dilute samples to **about** 1 ng/uL.
 2. Run 1 uL of each sample on an Agilent Bioanalyzer High Sensitivity DNA chip ([protocol](../../12%20Gels/12.03%20Bioanalyzer/index.md)).
 3. Select the region of DNA sizes that you expected to have and note their concentration. It will be less than 1 ng/uL because we typically have adaptor dimers and other irrelevant DNA molecules present.
-4. Provide **about 2 ng** of each of your samples for sequencing using the concentration determined in the previous step.
+4. Pool **about 2 ng** of each of your samples using the concentration determined in the previous step.
 5. Store the final samples at -20C.
