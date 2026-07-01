@@ -10,6 +10,7 @@
 8. Proceed to sample submission. We typically sequence at EMBL GeneCore (detailed below) or (sometimes) in-house.
 ## STEP 2: Choose Illumina Kit
 Choices:
+
 - **Kit:** MiSeq or NextSeq. Depends on what you need based on the choices below.
 - **Single or paired-end reads:** We always choose paired-end
 - **Read length:** Should cover you sample. If paired-end, coverage doubles, e.g., 2 x 150 nt gives covers up to 300 nt.
@@ -40,7 +41,9 @@ Choices:
 
 We submit fully prepared libraries, so that GeneCore only has to run them.
 ### 1: Fill out the submission form
-[EMBL Genomics Core Facility - Sample Submission](https://gc-registration.embl.org/)
+
+Open [EMBL Genomics Core Facility - Sample Submission](https://gc-registration.embl.org/)
+
 1. **User Information:** Listed in our internal [Laboratory Personnel Onboarding Protocol](https://vult.sharepoint.com/:w:/r/sites/JonesLab/Shared%20Documents/General/Lab%20Personnel%20Onboarding%20Protocol.docx?d=waee7950fe4d045988cc84707894f7d2a&csf=1&web=1&e=QPmXG5)
 2. **Sequencer Settings:**
 	1. Illumina
@@ -85,9 +88,11 @@ Once you have the DHL tracking number, **write an email** to [solexateam@embl.de
 >
 > If there are any further questions or information needed, please let us know!
 > 
- >Best regards,
- >==XOXOXO==
+> Best regards,
+> 
+> ==XOXOXO==
 
 **Attach:**
+
 - **Filled-out submission form** (from Step 1)
 - **Bioanalyzer report sheet** (from Step 3.1)
