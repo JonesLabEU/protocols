@@ -18,6 +18,7 @@ When resolving gel is reached, glycine becomes negatively charged and starts mov
 | Glycine   | 144        |
 | SDS       | 10         |
 | dH2O      | To 1 L     |
+
 ### 4X Tris-HCl buffer
 
 |          | Resolving (pH 8.8) | Stacking (pH 6.8) |
@@ -38,6 +39,7 @@ Denatures proteins
 | SDS               | 80 g/L    |
 | Glycerol          | 40% (V/V) |
 | Bromophenol blue  | 8 g/L     |
+
 ### Staining/destaining solutions
 
 | Component      | Staining (mL) | Destaining (mL) |
@@ -46,6 +48,7 @@ Denatures proteins
 | Ethanol (tech) | 400           | 100             |
 | Acetic acid    | 100           | 75              |
 | dH2O           | 500           | 825             |
+
 ### Resolving gel resolution
 
 | **Size of protein (kDa)** | **% acrylamide in resolving gel** |
@@ -170,10 +173,12 @@ Store at -20C for up to one year.
 - If new bands start appearing, add fresh DTT (100 mM final)
 
 **Usage:**
+
 1. Thaw and mix; no boiling.
 2. Load 5 uL per well.
 
 **Storage buffer:**
+
 - 62.5 mM Tris-H3PO4 (pH 7.5)
 - 1 mM EDTA
 - 2% (w/v) SDS

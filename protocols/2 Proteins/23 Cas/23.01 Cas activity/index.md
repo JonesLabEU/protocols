@@ -50,18 +50,6 @@ jupyter:
 	- All subsequent samples use the indicated volume from the previous RNP dilution, e.g., sample 3 uses 4.5 uL of sample 2.
 	- Best practice is to do serial dilutions in a row, starting with the greatest concentration and diluting by similar amounts. 
 
-| ID              | Dilution factor | Vol. from previous dilution (uL) | 1X NucleaseSeq buffer (uL) | Input conc. (nM) | Final conc. (nM) | Conc. in exp. (nM) | DNA:RNP conc. ratio (folds) |
-| --------------- | --------------- | -------------------------------- | -------------------------- | ---------------- | ---------------- | ------------------ | --------------------------- |
-| 1 (buffer only) | -               |                                  | 10                         |                  |                  |                    | -                           |
-| 2               | 1               | 10                               | 5                          | 1000             |                  |                    |                             |
-|                 |                 |                                  |                            |                  |                  |                    |                             |
-|                 |                 |                                  |                            |                  |                  |                    |                             |
-|                 |                 |                                  |                            |                  |                  |                    |                             |
-|                 |                 |                                  |                            |                  |                  |                    |                             |
-|                 |                 |                                  |                            |                  |                  |                    |                             |
-|                 |                 |                                  |                            |                  |                  |                    |                             |
-
-
 | ID               | Dilution factor | Vol. from previous dilution (uL) | 1X NucleaseSeq buffer (uL) | Input conc. (nM) | Final conc. (nM)      | Conc. in exp. (nM) | DNA:RNP conc. ratio (folds) |
 | ---------------- | --------------- | -------------------------------- | -------------------------- | ---------------- | --------------------- | ------------------ | --------------------------- |
 | 1 (buffer only)  | -               |                                  | 10                         |                  |                       |                    | -                           |
