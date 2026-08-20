@@ -1,31 +1,13 @@
 # Staining
-## Common dyes
-### Bromophenol blue
-![|150](../../../0%20General/02%20Reagents/02.01%20Common%20chemicals/assets/image-8.png)
 
-- 3′,3″,5′,5″-tetrabromophenolsulfonphthalein (BPB)
-- Below pH 3.5: yellow
-- Above pH 4.6: blue
-- Slightly negative
-- 1% agarose gel in TAE or TBE: co-migrates with 300 bp DNA
-- 2% agarose gel in TAE or TBE: co-migrates with 150 bp DNA
-### Xylene cyanol 
-![|150](../../../0%20General/02%20Reagents/02.01%20Common%20chemicals/assets/image-9.png)
- 
- - 1% agarose gel: co-migrates with 4-5k bp DNA
- - 6% polyacrylamide gel: co-migrates with 140 bp DNA
- - 20% denaturating (7 M urea) PAGE: 25 bp DNA
-### Orange G
-- Orange in pH < 8
-- Red in pH > 9
-### SYBR
+## Common stains
 - [**SYBR SAFE**](https://www.thermofisher.com/dk/en/home/life-science/dna-rna-purification-analysis/nucleic-acid-gel-electrophoresis/dna-stains/sybr-safe.html)
 	- Theoretical sensitivity: 500 pg
 	- Practical sensitivity (clear band): 100 ng
 - [**SYBR™ Gold**](https://www.thermofisher.com/order/catalog/product/S11494)
 	- Theoretical sensitivity: 25 pg; **picks up ssDNA too** 
 	- Practical sensitivity (clear band): 10 ng
-## Procedure
+## Staining procedure
 1. **Fill a new tray with some buffer** from the electrophoresis tray and **transfer the gel to it.**
 2. **Staining: Add 5 μL of a dye** and wrap the tray with tin foil or place in a covered box (dyes are often light sensitive).
 3. Place on a **rocker** for 15-30 min at ~15 rpm.
