@@ -8,7 +8,7 @@ For **native PAGE**, do not use dyes that contain **SDS** as they may separate d
 ## Common dyes (separate)
 
 ### Bromophenol blue
-![|150](../../../0%20General/02%20Reagents/02.01%20Common%20chemicals/assets/image-8.png)
+![150x150](../../../0%20General/02%20Reagents/02.01%20Common%20chemicals/assets/image-8.png)
 
 - 3′,3″,5′,5″-tetrabromophenolsulfonphthalein (BPB)
 - Below pH 3.5: yellow
@@ -17,7 +17,7 @@ For **native PAGE**, do not use dyes that contain **SDS** as they may separate d
 - 1% agarose gel in TAE or TBE: co-migrates with 300 bp DNA
 - 2% agarose gel in TAE or TBE: co-migrates with 150 bp DNA
 ### Xylene cyanol 
-![|150](../../../0%20General/02%20Reagents/02.01%20Common%20chemicals/assets/image-9.png)
+![150](../../../0%20General/02%20Reagents/02.01%20Common%20chemicals/assets/image-9.png)
  
  - 1% agarose gel: co-migrates with 4-5k bp DNA
  - 6% polyacrylamide gel: co-migrates with 140 bp DNA
@@ -29,7 +29,7 @@ For **native PAGE**, do not use dyes that contain **SDS** as they may separate d
 ## Common dye mixes
 ### TriTrack
 [Source](https://assets.thermofisher.com/TFS-Assets/LSG/manuals/MAN0013168_6X_TriTrack_DNA_Loading_Dye_UG.pdf)
-![|150](assets/image-1.png)
+![150](assets/image-1.png)
 
 - Contents:
 	- 10 mM Tris-HCl (pH 7.6)
