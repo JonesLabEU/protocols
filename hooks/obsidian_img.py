@@ -12,7 +12,8 @@ def _parse(alt):
     for part in (p.strip() for p in alt.lstrip("|").split("|")):
         m = SIZE.match(part)
         if m:
-            attrs = f' width="{m["w"]}"' + (f' height="{m["h"]}"' if m["h"] else "")
+            h = f"{m['h']}px" if m["h"] else "auto"
+            attrs = f' style="width:{m["w"]}px;height:{h}"'
         elif part:
             caption.append(part)
     return " ".join(caption), attrs
