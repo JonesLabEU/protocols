@@ -1,5 +1,3 @@
-# Intro 
-
 ## Common protocols used at the Jones!Lab
 
 Treat them as a good starting point for your experiments rather than an authoritative reference. Always think through if they make sense in your situation.
