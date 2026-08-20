@@ -1,43 +1,55 @@
 # Electroporation
 ## Overview
-Cell membrane does not pass current, thus subjecting cells to high voltage temporarily forms large pores in the membrane. Their closure is delayed at 0C. The presence lower sample resistance and might impede transformation efficiency or lead to arcing.
+Cell membrane does not pass current, thus subjecting cells to high voltage temporarily forms large pores in the membrane. Their closure is delayed at 0C. The presence of salts lower sample resistance and might impede transformation efficiency or lead to arcing.
 ## Electrocompetent cell preparation
 **Principle:** removing ions from the solution, such that the cells become better conductors of current than the solution, thus DNA is pulled inside the cells.
 
-1. Prepare the following (separately) and autoclave (reserve in advance): ^t5do5o
-	1. 500 mL LB medium (12.5 g LB powder + 500 mL water)
-	2. 500 mL dH2O
-	3. 300 mL 10% glycerol (30 mL glycerol + 270 mL water)
-	4. 2.5 L flask (covered with aluminum foil)
-	5. 20 1.5 mL Eppendorfs
-2. *(Optional)* Add antibiotic to LB medium (ratio 1 mL medium to 1 uL antibiotic).
-3. Put 1 mL of LB medium into a cuvette for blanking.
-4. Add 4 mL inoculated night culture to a 2.5 L flask, pour the entire LB medium (500 mL), cover, and incubate at 37C in a shaker (200-250 rpm; reserve in advance for ~3 hours).
-5. Sterilize 2 conicals (250 mL) with ethanol (from the outside) and under UV for 15 min (with lid open).
-6. Grow until OD600 reaches .5-.6  (perform measurements in a sterile environment):
+### Day 1
+1. Streak your strain on a plate and grow overnight.
+	- Do not omit this step if the strain was kept at -70C or your strain is on an old plate.
+### Day 2
+
+1. Prepare the following (separately) and autoclave (reserve in advance):
+
+| Item              | Required amount | Recommended amount to prepare | Amount from stock | dH2O   | Container                                     |
+| ----------------- | --------------- | ----------------------------- | ----------------- | ------ | --------------------------------------------- |
+| LB medium         | 50 mL           | 2 x 50 mL                     | 1.25 g LB powder  | 50 mL  | 2 x 250 mL flasks, covered with aluminum foil |
+| dH2O              | 50 mL           | 500 mL                        |                   |        | 1 L bottle                                    |
+| 10% glycerol      | 30 mL           | 500 mL                        | 50 mL             | 450 mL | 1 L bottle                                    |
+| 1.5 mL Eppendorfs | 8               | 20                            |                   |        | 500 mL beaker, covered with aluminum foil     |
+	Note: Amounts here and below can be upscaled 10X for batch production but cannot be downscaled.
+2. Place everything at 4C.
+3. Set an [overnight culture](../../31%20Culturing/31.03%20Overnight%20culture/index.md).
+### Day 3
+
+1. *(Optional)* Add 50 uL of relevant antibiotic to LB medium.
+2. Pour 1 mL of LB medium into a cuvette for blanking.
+3. Add 500 uL of inoculated night culture to LB (dilution 100:1), cover, and incubate at 37C in a shaker (200-250 rpm; reserve in advance for ~3 hours).
+4. Grow until OD600 reaches .5-.6  (perform measurements in a sterile environment):
 	1. Make the first measurement after 2 h.
-	2. Calculate how soon you will reach .5, given the 20-30 min doubling time.
-	3. After the predicted time, measure again and estimate the remaining time again.
-7. Split cells into the two 500 mL conical falcon tubes (with caps) using scale to match their weight exactly.
-	- Place the first conical on a spare adapter and use the same adapter for weighing the second conical.
-8. Put the conicals, dH2O and 10% glycerol on ice for 10 min and set centrifuge to cool down to 4C.
-9. Repeat:
-	1. Centrifuge at 2400 g for 12 min. Discard supernatant to the 2.5 L flask that was used for growing the culture.
+	2. Set the big centrifuge to cool down to 4C.
+	3. Calculate how soon you will reach .5, given the 20-30 min doubling time.
+	4. After the predicted time, measure again and estimate the remaining time again.
+5. Split the culture evenly into the two 50 mL falcons
+	- For batch production, use 500 mL conicals and scale to match weight exactly. Place the first conical (and a cap) on a spare adapter and use the same adapter for weighing the second conical.
+6. Put the conicals on ice for 10 min. From now on, **keep the culture cold at all times.**
+7. Repeat:
+	1. Centrifuge at 2400 g (4000 g for 500 mL batch) for 12 min. Discard supernatant to the flask that was used for growing the culture.
 	2. Resuspend pellets in each conical tube in the volume listed below:
 
 | Resuspension | Vol. (mL) | Then add (mL) |
 | ------------ | --------- | ------------- |
-| dH2O         | 2         | 48            |
-| dH2O         | 2         | 48            |
-| 10% glycerol | 2         | 48            |
-| 10% glycerol | 2         | 48            |
-| 10% glycerol | .7        |               |
-
-10. Distribute the cells in aliquots of 50 uL and snap-freeze in liquid nitrogen:
-	1. Keep aliquots on ice. Put them by the -70C fridge.
-	2. Get liquid nitrogen from V132 (requires card) in a dewar.
-	3. Throw several tubes at a time into the liquid nitrogen, stir, take them out with long tweezers, place into a lid of your cryo box, and pop into the fridge. Repeat.
-	4. Place the dewar on your bench with lid closed and a small hole open for nitrogen to evaporate.
+| dH2O         | 1         | 24            |
+| dH2O         | 1         | 24            |
+| 10% glycerol | 1         | 24            |
+| 10% glycerol | 1         | 24            |
+	Note: For 500 mL batches, add 49 mL instead of 24 mL.
+8. Resuspend the final pellet in the remaining liquid and distribute the cells in aliquots of 50 uL.
+	- When making a 500 mL batch, resuspend the pellet in 700 uL of 10% glycerol since not much liquid remains after decanting.
+9. **Use the cells immediately** for transformation for the highest efficiency. For long-term storage, **snap-freeze** the aliquots in liquid nitrogen:
+	1. Get liquid nitrogen from V132 (requires card) in a dewar.
+	2. Throw several tubes at a time into the liquid nitrogen, stir, take them out with long tweezers, and place them in your cryo box. Repeat.
+	3. Place the dewar on your bench with lid closed and a small hole open for nitrogen to evaporate.
 ## Transformation efficiency test
 1. Thaw 50 uL (one vial) of electrocompetent cells **on ice**.
 2. Add 10 pg (**1 uL**) of **pUC19** control DNA.
@@ -45,7 +57,7 @@ Cell membrane does not pass current, thus subjecting cells to high voltage tempo
 4. Dilute the transformation mix 1:50, that is, take **20 uL** and place in **980 uL of LB Medium**.
 5. Plate **30 uL** on **CB plates**.
 6. **Transformation efficiency** (# transformants / ug DNA)
-	= # colonies / 10 pg DNA x 1000000 pg/ug x (50 uL + 250 uL) total volume / 30 uL plated volume x 50 (dilution factor)
+	= # colonies / 10 pg DNA x 10^6 pg/ug x (50 uL + 250 uL) total volume / 30 uL plated volume x 50 (dilution factor)
 	**= # colonies x 5e7**
 ## Transformation
 ### Materials
