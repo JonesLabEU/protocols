@@ -30,10 +30,10 @@ def _fix_path(path, page):
 
 def _render(path, alt, page):
     caption, attrs = _parse(alt)
-    path = _fix_path(path.strip("<>"), page)
+    path = path.strip("<>")
     if not attrs:
         return f"![{caption}]({path})"
-    img = f'<img src="{path}" alt="{caption}"{attrs}>'
+    img = f'<img src="{_fix_path(path, page)}" alt="{caption}"{attrs}>'
     return (
         f'<figure markdown="span">{img}<figcaption>{caption}</figcaption></figure>'
         if caption
