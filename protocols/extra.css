@@ -2,7 +2,7 @@
   order: 99;
   margin-left: auto;
 }
-.md-nav__link[for] {
+.md-nav__link[for] .md-ellipsis {
   color: var(--md-default-fg-color);
   font-weight: 700;
 }
