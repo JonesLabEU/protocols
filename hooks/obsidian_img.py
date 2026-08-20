@@ -1,3 +1,4 @@
+import posixpath
 import re
 
 MD = re.compile(
@@ -12,16 +13,24 @@ def _parse(alt):
     for part in (p.strip() for p in alt.lstrip("|").split("|")):
         m = SIZE.match(part)
         if m:
-            h = f"{m['h']}px" if m["h"] else "auto"
-            attrs = f' style="width:{m["w"]}px;height:{h}"'
+            attrs = f' width="{m["w"]}"' + (f' height="{m["h"]}"' if m["h"] else "")
         elif part:
             caption.append(part)
     return " ".join(caption), attrs
 
 
-def _render(path, alt):
+def _fix_path(path, page):
+    if path.startswith(("http://", "https://", "data:", "/")):
+        return path
+    dest = posixpath.normpath(
+        posixpath.join(posixpath.dirname(page.file.src_uri), path)
+    )
+    return posixpath.relpath(dest, posixpath.dirname(page.file.url) or ".")
+
+
+def _render(path, alt, page):
     caption, attrs = _parse(alt)
-    path = path.strip("<>")
+    path = _fix_path(path.strip("<>"), page)
     if not attrs:
         return f"![{caption}]({path})"
     img = f'<img src="{path}" alt="{caption}"{attrs}>'
@@ -32,6 +41,6 @@ def _render(path, alt):
     )
 
 
-def on_page_markdown(markdown, **kwargs):
-    markdown = MD.sub(lambda m: _render(m["path"], m["alt"]), markdown)
-    return WIKI.sub(lambda m: _render(m["path"], m["alt"] or ""), markdown)
+def on_page_markdown(markdown, page, **kwargs):
+    markdown = MD.sub(lambda m: _render(m["path"], m["alt"], page), markdown)
+    return WIKI.sub(lambda m: _render(m["path"], m["alt"] or "", page), markdown)
