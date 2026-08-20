@@ -2,3 +2,7 @@
   order: 99;
   margin-left: auto;
 }
+.md-nav__item--section > .md-nav__link {
+  color: var(--md-default-fg-color);
+  font-weight: 700;
+}
