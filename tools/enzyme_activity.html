@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang='en'>
+
+<head>
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <title>Enzyme activity estimation</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --panel2: #f1f3f6;
+      --line: #e2e6ea;
+      --txt: #1c2530;
+      --muted: #667085;
+      --accent: #2563eb;
+      --bad: #dc2626;
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--txt);
+      font: 14px/1.45 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif
+    }
+
+    .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 20px
+    }
+
+    h1 {
+      font-size: 20px;
+      margin: 0 0 16px
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin-bottom: 18px
+    }
+
+    .inputs {
+      display: grid;
+      grid-template-columns: minmax(220px, 300px) 1fr;
+      gap: 24px
+    }
+
+    @media (max-width: 700px) {
+      .inputs {
+        grid-template-columns: 1fr
+      }
+    }
+
+    label.fld {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px
+    }
+
+    /* data grid */
+    .grid-wrap {
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid var(--line);
+      border-radius: 6px
+    }
+
+    #dataGrid {
+      width: 100%;
+      border-collapse: collapse
+    }
+
+    #dataGrid th {
+      position: sticky;
+      top: 0;
+      background: var(--panel2);
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 500;
+      padding: 5px 8px;
+      text-align: left;
+      width: auto;
+      z-index: 1
+    }
+
+    #dataGrid td {
+      padding: 0;
+      border-bottom: 1px solid var(--line)
+    }
+
+    #dataGrid td.idx {
+      width: 30px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 11px
+    }
+
+    #dataGrid td.del {
+      width: 28px;
+      text-align: center
+    }
+
+    #dataGrid input {
+      width: 100%;
+      border: none;
+      padding: 5px 8px;
+      font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: transparent;
+      color: var(--txt);
+      font-variant-numeric: tabular-nums
+    }
+
+    #dataGrid input:focus {
+      outline: 2px solid rgba(37, 99, 235, .4);
+      outline-offset: -2px;
+      background: #f8faff
+    }
+
+    #dataGrid input.bad {
+      background: #fef2f2;
+      color: var(--bad)
+    }
+
+    #dataGrid td.x-col {
+      border-right: 1px solid var(--line)
+    }
+
+    .del-btn {
+      border: none;
+      background: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 15px;
+      line-height: 1;
+      padding: 2px 6px;
+      border-radius: 4px
+    }
+
+    .del-btn:hover {
+      color: var(--bad);
+      background: #fef2f2
+    }
+
+    .grid-tools {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px
+    }
+
+    .btn.sm {
+      padding: 3px 10px;
+      font-size: 12px
+    }
+
+    /* formula */
+    .formula {
+      font: italic 26px/1.2 'Cambria Math', Cambria, 'Times New Roman', serif;
+      margin: 4px 0 14px;
+      color: var(--txt)
+    }
+
+    .formula .n {
+      font-style: normal
+    }
+
+    .formula sup {
+      font-size: 60%
+    }
+
+    /* plot + on-plot title */
+    .plotwrap {
+      position: relative
+    }
+
+    #titleInput {
+      position: absolute;
+      border: none;
+      outline: none;
+      background: transparent;
+      box-shadow: none;
+      text-align: center;
+      font-weight: 600;
+      color: var(--txt);
+      padding: 0;
+      margin: 0;
+      font-family: -apple-system, Helvetica, Arial, sans-serif;
+      -webkit-appearance: none;
+      appearance: none
+    }
+
+    #titleInput::placeholder {
+      color: #c0c5cc
+    }
+
+    #titleInput {
+      cursor: text;
+      transition: color .12s
+    }
+
+    #titleInput:hover:not(:focus) {
+      color: var(--accent)
+    }
+
+    #titlePen {
+      position: absolute;
+      pointer-events: none;
+      color: var(--muted);
+      opacity: .45;
+      transition: opacity .12s, color .12s;
+      line-height: 1
+    }
+
+    .plotwrap:has(#titleInput:hover) #titlePen {
+      opacity: 1;
+      color: var(--accent)
+    }
+
+    .plotwrap:has(#titleInput:focus) #titlePen {
+      opacity: 0
+    }
+
+    .lbl {
+      cursor: move
+    }
+
+    .lbl .close {
+      opacity: 0;
+      cursor: pointer;
+      transition: opacity .12s
+    }
+
+    .lbl:hover .close {
+      opacity: 1
+    }
+
+    /* grid range selection */
+    #dataGrid td.sel {
+      background: rgba(37, 99, 235, .13)
+    }
+
+    #dataGrid td.idx {
+      cursor: e-resize;
+      user-select: none
+    }
+
+    #dataGrid th[data-c] {
+      cursor: s-resize;
+      user-select: none
+    }
+
+    .grid-wrap:focus {
+      outline: none
+    }
+
+    .grid-wrap.dragging,
+    .grid-wrap.dragging input {
+      user-select: none
+    }
+
+    .grid-wrap.dragging input::selection {
+      background: transparent
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px
+    }
+
+    #err {
+      color: var(--bad);
+      font-size: 13px;
+      min-height: 18px;
+      margin-top: 6px
+    }
+
+    table {
+      border-collapse: collapse;
+      font-size: 13px;
+      width: 100%
+    }
+
+    th,
+    td {
+      padding: 5px 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      font-variant-numeric: tabular-nums
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 500;
+      width: 45%
+    }
+
+    .sw {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      transform: rotate(45deg);
+      margin-right: 8px
+    }
+
+    .phead {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-bottom: 8px
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--panel2);
+      color: var(--txt);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 13px;
+      cursor: pointer
+    }
+
+    .btn:hover {
+      border-color: var(--accent);
+      color: var(--accent)
+    }
+
+    #plot {
+      width: 100%;
+      height: auto;
+      display: block
+    }
+
+    #plot text {
+      font-family: -apple-system, Helvetica, Arial, sans-serif
+    }
+
+    #hoverTip {
+      position: fixed;
+      z-index: 10;
+      pointer-events: none;
+      display: none;
+      background: rgba(28, 37, 48, .92);
+      color: #fff;
+      font-size: 12px;
+      line-height: 1.35;
+      padding: 4px 8px;
+      border-radius: 5px;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums
+    }
+  </style>
+</head>
+
+<body>
+  <div class='wrap'>
+    <h1>Enzyme activity estimation</h1>
+
+    <div class='panel'>
+      <div class='inputs'>
+        <div>
+          <div class='grid-wrap' tabindex='-1'>
+            <table id='dataGrid'>
+              <thead>
+                <tr><th></th><th data-c='x' title='Select column'>DNA:RNP ratio</th><th data-c='y' title='Select column'>Cleavage efficiency</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div id='err'></div>
+        </div>
+        <div>
+          <div class='formula'>y <span class='n'>=</span> a <span class='n'>&middot; (1 &minus;</span> e<sup><span class='n'>&minus;</span>k/x</sup><span class='n'>)</span></div>
+          <table id='results'></table>
+        </div>
+      </div>
+    </div>
+
+    <div class='panel'>
+      <div class='phead'>
+        <button class='btn' id='resetLayout' title='Restore hidden and moved labels and legend'>↺ Reset layout</button>
+        <button class='btn' id='exportSvg'>⤓ SVG</button>
+        <button class='btn' id='exportPng'>⤓ PNG</button>
+      </div>
+      <div class='plotwrap'>
+        <svg id='plot' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 820 520'></svg>
+        <input type='text' id='titleInput' value='AsCas12a-TwinStrep activity' placeholder='Click to add a title' spellcheck='false' title='Click to edit the title'>
+        <span id='titlePen'>&#9998;</span>
+      </div>
+    </div>
+  </div>
+  <div id='hoverTip'></div>
+
+  <script>
+    'use strict';
+    const SVGNS = 'http://www.w3.org/2000/svg';
+    const $ = id => document.getElementById(id);
+    const C = { eff: '#4682b4', act: '#fa8072', h50: '#8fbc8f', effBox: '#b0c4de', data: '#dc2626' };
+    const P = { W: 820, H: 520, mL: 70, mR: 24, mT: 44, mB: 56 };
+    const model = (x, a, k) => a * (1 - Math.exp(-k / x));
+    const titleInput = $('titleInput');
+    let fit = null;
+
+    /* ======================= DATA GRID ======================= */
+    let rows = [[0.03, 0.9696], [0.1, 0.9641], [0.3, 0.9643], [1, 0.9271], [3, 0.3909], [10, 0.0982], [30, 0.0975]]
+      .map(([x, y]) => ({ x: String(x), y: String(y) }));
+    const toNum = v => { const t = String(v).trim().replace(',', '.'); return t === '' ? NaN : Number(t); };
+    const isBlank = r => !r.x.trim() && !r.y.trim();
+
+    function splitLine(line) {
+      // tab or semicolon separated: commas are decimal separators (e.g. LT/DE Excel)
+      if (/[\t;]/.test(line)) return line.split(/[\t;]/).map(f => f.trim());
+      const f = line.trim().split(/\s+/);
+      return f.length > 1 ? f : line.split(',').map(f => f.trim());
+    }
+
+    // spreadsheet-like: always at least MIN_ROWS rows and SPARE empty rows below the last filled one
+    const MIN_ROWS = 20, SPARE = 10;
+    function lastFilled() { for (let i = rows.length - 1; i >= 0; i--) if (!isBlank(rows[i])) return i; return -1; }
+    function makeRow(i) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td class='idx'>${i + 1}</td><td class='x-col'><input data-r='${i}' data-c='x' inputmode='decimal'></td>`
+        + `<td><input data-r='${i}' data-c='y' inputmode='decimal'></td>`;
+      tr.querySelector('[data-c=x]').value = rows[i].x; tr.querySelector('[data-c=y]').value = rows[i].y;
+      return tr;
+    }
+    function ensureRows() {   // append rows without rebuilding (keeps focus)
+      const tb = document.querySelector('#dataGrid tbody');
+      while (rows.length < Math.max(MIN_ROWS, lastFilled() + 1 + SPARE)) {
+        rows.push({ x: '', y: '' }); tb.appendChild(makeRow(rows.length - 1));
+      }
+    }
+    function buildGrid(focus) {
+      while (rows.length < Math.max(MIN_ROWS, lastFilled() + 1 + SPARE)) rows.push({ x: '', y: '' });
+      const tb = document.querySelector('#dataGrid tbody'); tb.innerHTML = '';
+      rows.forEach((r, i) => tb.appendChild(makeRow(i)));
+      markBad(); if (typeof markSel === 'function') markSel();
+      if (focus) { const el = tb.querySelector(`input[data-r='${focus.r}'][data-c='${focus.c}']`); if (el) { el.focus(); el.select(); } }
+    }
+    function markBad() {
+      document.querySelectorAll('#dataGrid input').forEach(el => {
+        const r = rows[+el.dataset.r], v = el.value.trim();
+        const bad = (v !== '' && !Number.isFinite(toNum(v))) || (el.dataset.c === 'x' && v !== '' && toNum(v) <= 0)
+          || (v === '' && !isBlank(r));
+        el.classList.toggle('bad', bad);
+      });
+    }
+
+    const tbody = document.querySelector('#dataGrid tbody'), gridWrap = document.querySelector('.grid-wrap');
+    const COLS = ['x', 'y'];
+    let sel = null, selDrag = null;   // sel: {a:{r,c}, b:{r,c}}, c = 0 (x) or 1 (y)
+    const selBox = () => sel && {
+      r0: Math.min(sel.a.r, sel.b.r), r1: Math.max(sel.a.r, sel.b.r),
+      c0: Math.min(sel.a.c, sel.b.c), c1: Math.max(sel.a.c, sel.b.c)
+    };
+    const isMulti = () => { const b = selBox(); return !!b && (b.r1 > b.r0 || b.c1 > b.c0); };
+    function markSel() {
+      const b = isMulti() ? selBox() : null;
+      tbody.querySelectorAll('input').forEach(el => {
+        const r = +el.dataset.r, c = COLS.indexOf(el.dataset.c);
+        el.parentElement.classList.toggle('sel', !!b && r >= b.r0 && r <= b.r1 && c >= b.c0 && c <= b.c1);
+      });
+    }
+    function setSel(a, b) { sel = a ? { a, b: b || a } : null; markSel(); }
+    function cellOf(target) {
+      const td = target.closest && target.closest('td'); if (!td || !tbody.contains(td)) return null;
+      const tr = td.parentElement, r = [...tbody.children].indexOf(tr);
+      if (td.classList.contains('idx')) return { r, c: -1 };
+      const inp = td.querySelector('input'); return inp ? { r, c: COLS.indexOf(inp.dataset.c) } : null;
+    }
+    // Click (no drag) on a cell enters edit mode; dragging selects a range.
+    // A cell already being edited keeps native caret/text selection until the drag leaves it.
+    const inputAt = cell => tbody.querySelector(`input[data-r='${cell.r}'][data-c='${COLS[cell.c]}']`);
+    tbody.addEventListener('mousedown', e => {
+      const cell = cellOf(e.target); if (!cell || e.button !== 0) return;
+      if (cell.c === -1) {   // row header: whole rows
+        e.preventDefault(); gridWrap.focus();
+        const a = e.shiftKey && sel ? { r: sel.a.r, c: 0 } : { r: cell.r, c: 0 };
+        setSel(a, { r: cell.r, c: 1 }); selDrag = { rows: true, moved: true };
+        return;
+      }
+      const inp = inputAt(cell), editing = document.activeElement === inp;
+      if (e.shiftKey && sel) { e.preventDefault(); gridWrap.focus(); setSel(sel.a, cell); selDrag = { rows: false, moved: true }; return; }
+      if (!editing) e.preventDefault();   // no focus / text selection yet
+      setSel(cell); selDrag = { rows: false, moved: false, cell, editing };
+    });
+    window.addEventListener('mousemove', e => {
+      if (!selDrag || !sel) return;
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const cell = el && cellOf(el); if (!cell) return;
+      const b = selDrag.rows ? { r: cell.r, c: 1 } : { r: cell.r, c: Math.max(cell.c, 0) };
+      if (b.r === sel.b.r && b.c === sel.b.c) return;
+      setSel(sel.a, b);
+      if (isMulti() && !selDrag.moved) {   // drag left the start cell: switch to range mode
+        selDrag.moved = true;
+        gridWrap.classList.add('dragging');
+      }
+      if (selDrag.moved) {   // keep any text selection inside the start cell collapsed
+        const ae = document.activeElement;
+        if (ae && ae.tagName === 'INPUT' && gridWrap.contains(ae)) { const n = ae.selectionStart; ae.setSelectionRange(n, n); ae.blur(); }
+        if (document.activeElement !== gridWrap) gridWrap.focus();
+        window.getSelection().removeAllRanges();
+        e.preventDefault();
+      }
+    });
+    window.addEventListener('mouseup', () => {
+      if (selDrag && !selDrag.moved && !selDrag.rows && !selDrag.editing) {   // plain click: edit that cell
+        const inp = inputAt(selDrag.cell);
+        if (inp) { inp.focus(); const n = inp.value.length; inp.setSelectionRange(n, n); }
+      }
+      selDrag = null; gridWrap.classList.remove('dragging');
+    });
+    document.querySelectorAll('#dataGrid th[data-c]').forEach(th => th.addEventListener('mousedown', e => {
+      e.preventDefault(); gridWrap.focus();
+      const c = COLS.indexOf(th.dataset.c), last = Math.max(lastFilled(), 0);
+      if (e.shiftKey && sel) setSel({ r: 0, c: sel.a.c }, { r: last, c });
+      else setSel({ r: 0, c }, { r: last, c });
+    }));
+    document.addEventListener('mousedown', e => { if (!gridWrap.contains(e.target)) setSel(null); });
+    gridWrap.addEventListener('keydown', e => {
+      if (!isMulti()) return;
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        const b = selBox();
+        for (let r = b.r0; r <= b.r1; r++) for (let c = b.c0; c <= b.c1; c++) rows[r][COLS[c]] = '';
+        buildGrid(); gridWrap.focus(); render();
+      } else if (e.key === 'Escape') setSel(null);
+    });
+    document.addEventListener('copy', e => {
+      if (!isMulti() || !gridWrap.contains(document.activeElement)) return;
+      const b = selBox(), out = [];
+      for (let r = b.r0; r <= b.r1; r++) { const line = []; for (let c = b.c0; c <= b.c1; c++) line.push(rows[r][COLS[c]]); out.push(line.join('\t')); }
+      e.clipboardData.setData('text/plain', out.join('\n')); e.preventDefault();
+    });
+    tbody.addEventListener('input', e => {
+      const el = e.target; if (el.tagName !== 'INPUT') return;
+      const i = +el.dataset.r; rows[i][el.dataset.c] = el.value;
+      ensureRows(); markBad(); render();
+    });
+    tbody.addEventListener('keydown', e => {
+      const el = e.target; if (el.tagName !== 'INPUT') return;
+      const i = +el.dataset.r, c = el.dataset.c;
+      let t = null;
+      if (e.key === 'Enter' || e.key === 'ArrowDown') t = { r: Math.min(i + 1, rows.length - 1), c };
+      else if (e.key === 'ArrowUp') t = { r: Math.max(i - 1, 0), c };
+      if (t) { e.preventDefault(); const n = tbody.querySelector(`input[data-r='${t.r}'][data-c='${t.c}']`); n.focus(); n.select(); }
+    });
+    tbody.addEventListener('paste', e => {
+      const el = e.target; if (el.tagName !== 'INPUT') return;
+      const text = (e.clipboardData || window.clipboardData).getData('text');
+      if (!/\s|;/.test(text.trim())) return;   // single value: normal paste
+      e.preventDefault();
+      const lines = text.replace(/\r/g, '').split('\n').filter(l => l.trim() !== '');
+      let i = +el.dataset.r; const startCol = el.dataset.c;
+      for (const line of lines) {
+        const f = splitLine(line);
+        if (!rows[i]) rows[i] = { x: '', y: '' };
+        if (startCol === 'x') { rows[i].x = f[0] ?? ''; if (f.length > 1) rows[i].y = f[1]; }
+        else rows[i].y = f[0] ?? '';
+        i++;
+      }
+      buildGrid({ r: Math.min(i, rows.length - 1), c: startCol }); render();
+    });
+
+    /* ======================= PARSE ======================= */
+    function getPoints() {
+      const pts = [];
+      rows.forEach((r, i) => {
+        if (isBlank(r)) return;
+        const x = toNum(r.x), y = toNum(r.y);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error(`Row ${i + 1} needs two numbers.`);
+        if (x <= 0) throw new Error(`Row ${i + 1}: ratio must be positive (log scale).`);
+        pts.push({ x, y });
+      });
+      if (pts.length < 3) throw new Error('Need at least 3 points.');
+      return pts.sort((p, q) => p.x - q.x);
+    }
+
+    /* ======================= FIT (Levenberg-Marquardt) ======================= */
+    function curveFit(pts) {
+      const n = pts.length;
+      // initial guess: a = max y, k from the point closest to half-max
+      let a = Math.max(...pts.map(p => p.y));
+      let best = pts[0], bd = Infinity;
+      for (const p of pts) { const d = Math.abs(p.y - a / 2); if (d < bd && p.y < a) { bd = d; best = p; } }
+      let k = Math.max(1e-9, -best.x * Math.log(Math.max(1e-6, 1 - best.y / a)));
+      if (!Number.isFinite(k)) k = 1;
+
+      const ssr = (a, k) => pts.reduce((s, p) => s + (p.y - model(p.x, a, k)) ** 2, 0);
+      const jac = (a, k) => {
+        let JtJ = [0, 0, 0], Jtr = [0, 0];
+        for (const p of pts) {
+          const e = Math.exp(-k / p.x), da = 1 - e, dk = a * e / p.x, r = p.y - a * da;
+          JtJ[0] += da * da; JtJ[1] += da * dk; JtJ[2] += dk * dk; Jtr[0] += da * r; Jtr[1] += dk * r;
+        }
+        return { JtJ, Jtr };
+      };
+      let lam = 1e-3, cur = ssr(a, k);
+      for (let it = 0; it < 500; it++) {
+        const { JtJ, Jtr } = jac(a, k);
+        const m00 = JtJ[0] * (1 + lam), m11 = JtJ[2] * (1 + lam), m01 = JtJ[1], det = m00 * m11 - m01 * m01;
+        if (!det) break;
+        const da = (m11 * Jtr[0] - m01 * Jtr[1]) / det, dk = (m00 * Jtr[1] - m01 * Jtr[0]) / det;
+        const na = a + da, nk = k + dk, ns = ssr(na, nk);
+        if (Number.isFinite(ns) && ns < cur) {
+          const done = Math.abs(cur - ns) <= 1e-15 * Math.max(1, cur) && Math.abs(da) < 1e-12 && Math.abs(dk) < 1e-12;
+          a = na; k = nk; cur = ns; lam = Math.max(lam / 10, 1e-12);
+          if (done) break;
+        } else { lam *= 10; if (lam > 1e12) break; }
+      }
+      // covariance as in scipy curve_fit (absolute_sigma=False)
+      const { JtJ } = jac(a, k), det = JtJ[0] * JtJ[2] - JtJ[1] * JtJ[1];
+      const s2 = n > 2 ? cur / (n - 2) : NaN;
+      const se = det ? [Math.sqrt(JtJ[2] / det * s2), Math.sqrt(JtJ[0] / det * s2)] : [NaN, NaN];
+      const mean = pts.reduce((s, p) => s + p.y, 0) / n;
+      const sst = pts.reduce((s, p) => s + (p.y - mean) ** 2, 0);
+      return { a, k, seA: se[0], seK: se[1], r2: 1 - cur / sst };
+    }
+
+    /* ======================= SVG HELPERS ======================= */
+    function E(tag, attrs, parent) {
+      const e = document.createElementNS(SVGNS, tag);
+      for (const k in attrs) e.setAttribute(k, attrs[k]);
+      if (parent) parent.appendChild(e);
+      return e;
+    }
+    function T(parent, x, y, txt, attrs = {}) {
+      const t = E('text', Object.assign({ x, y, 'font-size': 12, fill: '#1c2530' }, attrs), parent);
+      t.textContent = txt; return t;
+    }
+    function diamond(parent, cx, cy, fill, r = 6) {
+      return E('path', { d: `M${cx} ${cy - r}L${cx + r} ${cy}L${cx} ${cy + r}L${cx - r} ${cy}Z`, fill }, parent);
+    }
+    const lblOff = {};   // key -> {dx, dy} in svg units, persists across renders
+    const hidden = {};   // key -> true when closed
+    function movable(parent, key) {
+      const off = lblOff[key] || { dx: 0, dy: 0 };
+      const g = E('g', { class: 'lbl', transform: `translate(${off.dx} ${off.dy})` }, parent);
+      g.dataset.key = key;
+      E('title', {}, g).textContent = 'Drag to move, double-click to reset position';
+      return g;
+    }
+    function addClose(g, x, y) {
+      const c = E('g', { class: 'close hover-el', transform: `translate(${x} ${y})` }, g);
+      E('title', {}, c).textContent = 'Hide';
+      E('circle', { r: 7, fill: '#fff', stroke: '#98a2b3' }, c);
+      E('path', { d: 'M-3 -3L3 3M3 -3L-3 3', stroke: '#475467', 'stroke-width': 1.5, 'stroke-linecap': 'round' }, c);
+    }
+    function labelBox(parent, x, y, txt, fill, key) {
+      if (hidden[key]) return;
+      const g = movable(parent, key);
+      const bg = E('rect', { fill }, g);
+      const t = T(g, x, y, txt, { 'font-size': 13 });
+      const b = t.getBBox();
+      let dx = 0;
+      if (b.x + b.width + 6 > P.W - P.mR) dx = (P.W - P.mR) - (b.x + b.width + 6);   // keep inside plot
+      if (dx) t.setAttribute('x', x + dx);
+      bg.setAttribute('x', b.x - 5 + dx); bg.setAttribute('y', b.y - 3);
+      bg.setAttribute('width', b.width + 10); bg.setAttribute('height', b.height + 6);
+      addClose(g, b.x + b.width + 5 + dx, b.y - 3);
+    }
+    const fmtX = v => (v >= 1 ? +v.toPrecision(4) : +v.toPrecision(3)).toString();
+
+    /* ======================= PLOT ======================= */
+    function render() {
+      const svg = $('plot'); svg.innerHTML = '';
+      let pts;
+      try { pts = getPoints(); $('err').textContent = ''; }
+      catch (e) { $('err').textContent = e.message; fit = null; $('results').innerHTML = ''; return; }
+
+      const { a, k, seA, seK, r2 } = curveFit(pts);
+      const xs = pts.map(p => p.x), xmin = Math.min(...xs), xmax = Math.max(...xs);
+      const xEff = 1, yEff = model(xEff, a, k);
+      const xAct = 0.203 * k, yAct = model(xAct, a, k);
+      const y50 = 0.5, x50 = a > y50 ? -k / Math.log(1 - y50 / a) : NaN;
+
+      // axes: log x padded like matplotlib auto-margins
+      const lmin = Math.log10(xmin), lmax = Math.log10(xmax), pad = Math.max(0.05 * (lmax - lmin), 0.1);
+      const L0 = lmin - pad, L1 = lmax + pad, Y0 = 0, Y1 = 1.05;
+      const pW = P.W - P.mL - P.mR, pH = P.H - P.mT - P.mB;
+      const sx = x => P.mL + (Math.log10(x) - L0) / (L1 - L0) * pW;
+      const sy = y => P.mT + (1 - (y - Y0) / (Y1 - Y0)) * pH;
+      const x2v = px => Math.pow(10, L0 + (px - P.mL) / pW * (L1 - L0));
+      fit = { a, k, sx, sy, x2v, pW, pH, L0, L1, pts, lmin, lmax };
+
+      E('rect', { x: 0, y: 0, width: P.W, height: P.H, fill: '#fff' }, svg);
+      const defs = E('defs', {}, svg), cp = E('clipPath', { id: 'clip' }, defs);
+      E('rect', { x: P.mL, y: P.mT, width: pW, height: pH }, cp);
+
+      // grid: minor log lines, data x ticks, y ticks
+      const grid = E('g', { stroke: '#d3d3d3', 'stroke-width': 0.6, 'stroke-dasharray': '4 3' }, svg);
+      for (let d = Math.floor(L0); d <= Math.ceil(L1); d++)
+        for (let m = 1; m <= 9; m++) {
+          const v = m * Math.pow(10, d), lv = Math.log10(v);
+          if (lv < L0 || lv > L1) continue;
+          E('line', { x1: sx(v), x2: sx(v), y1: P.mT, y2: P.mT + pH, opacity: m === 1 ? 1 : 0.5 }, grid);
+        }
+      for (let y = 0; y <= 1.0001; y += 0.2) E('line', { x1: P.mL, x2: P.mL + pW, y1: sy(y), y2: sy(y) }, grid);
+      const uniq = [...new Set(xs)];
+      for (const v of uniq) E('line', { x1: sx(v), x2: sx(v), y1: P.mT, y2: P.mT + pH }, grid);
+
+      // axes box + tick labels
+      E('rect', { x: P.mL, y: P.mT, width: pW, height: pH, fill: 'none', stroke: '#1c2530', 'stroke-width': 1 }, svg);
+      for (const v of uniq) {
+        E('line', { x1: sx(v), x2: sx(v), y1: P.mT + pH, y2: P.mT + pH + 5, stroke: '#1c2530' }, svg);
+        T(svg, sx(v), P.mT + pH + 19, fmtX(v), { 'text-anchor': 'middle' });
+      }
+      for (let y = 0; y <= 1.0001; y += 0.2) {
+        E('line', { x1: P.mL - 5, x2: P.mL, y1: sy(y), y2: sy(y), stroke: '#1c2530' }, svg);
+        T(svg, P.mL - 9, sy(y) + 4, y.toFixed(1), { 'text-anchor': 'end' });
+      }
+      T(svg, P.mL + pW / 2, P.H - 12, 'DNA:RNP concentration (log scale)', { 'text-anchor': 'middle', 'font-size': 13 });
+      T(svg, 20, P.mT + pH / 2, 'Cleavage efficiency', { 'text-anchor': 'middle', 'font-size': 13, transform: `rotate(-90 20 ${P.mT + pH / 2})` });
+      T(svg, P.mL + pW / 2, 26, titleInput.value, { 'text-anchor': 'middle', 'font-size': 15, 'font-weight': 600, class: 'title-el', display: 'none' });
+
+      const plot = E('g', { 'clip-path': 'url(#clip)' }, svg);
+
+      // fitted curve over data range
+      let d = '';
+      for (let i = 0; i < 500; i++) {
+        const x = Math.pow(10, lmin + (lmax - lmin) * i / 499);
+        d += (i ? 'L' : 'M') + sx(x).toFixed(2) + ' ' + sy(model(x, a, k)).toFixed(2);
+      }
+      E('path', { d, fill: 'none', stroke: '#000', 'stroke-width': 1.5 }, plot);
+
+      // guide lines + markers
+      const dash = { 'stroke-dasharray': '5 4', 'stroke-width': 1 };
+      const xLeft = P.mL;
+      const guides = [];
+      if (yEff >= 0) guides.push({ key: 'eff', x: xEff, y: yEff, col: C.eff, h: true, box: C.effBox, txt: `Efficiency at equimolar point: ${yEff.toFixed(2)}`, off: 1.15 });
+      if (Number.isFinite(xAct) && xAct > 0) guides.push({ key: 'act', x: xAct, y: yAct, col: C.act, h: false, box: C.act, txt: `Enzyme activity: ${(xAct * 100).toFixed(0)}%`, off: 1.2 });
+      if (Number.isFinite(x50) && x50 > 0) guides.push({ key: 'h50', x: x50, y: y50, col: C.h50, h: true, box: C.h50, txt: `Activity at 50% cleavage: ${(x50 * 100).toFixed(0)}%`, off: 1.15 });
+      for (const g of guides) {
+        E('line', Object.assign({ x1: sx(g.x), x2: sx(g.x), y1: sy(0), y2: sy(g.y), stroke: g.col }, dash), plot);
+        if (g.h) E('line', Object.assign({ x1: xLeft, x2: sx(g.x), y1: sy(g.y), y2: sy(g.y), stroke: g.col }, dash), plot);
+      }
+
+      // data points
+      for (const p of pts) E('circle', { cx: sx(p.x), cy: sy(p.y), r: 5, fill: C.data }, plot);
+      for (const g of guides) diamond(plot, sx(g.x), sy(g.y), g.col);
+
+      // legend (lower left)
+      if (!hidden.legend) {
+        const lg = movable(svg, 'legend'), lx = P.mL + 12, ly = P.mT + pH - 60;
+        const lbg = E('rect', { x: lx - 6, y: ly - 6, rx: 4, fill: '#fff', 'fill-opacity': 0.85, stroke: '#d0d5dd' }, lg);
+        E('circle', { cx: lx + 12, cy: ly + 9, r: 5, fill: C.data }, lg);
+        T(lg, lx + 32, ly + 13, 'Data');
+        E('line', { x1: lx, x2: lx + 24, y1: ly + 33, y2: ly + 33, stroke: '#000', 'stroke-width': 1.5 }, lg);
+        T(lg, lx + 32, ly + 37, 'Fit');
+        const lb = lg.getBBox(), lw = lb.width + 8;
+        lbg.setAttribute('width', lw); lbg.setAttribute('height', lb.height + 14);
+        addClose(lg, lx - 6 + lw, ly - 6);
+      }
+
+      for (const g of guides) labelBox(svg, sx(g.off * g.x), sy(g.y + 0.04), g.txt, g.box, g.key);
+
+      // hover elements (excluded from export)
+      fit.hLine = E('line', { class: 'hover-el', y1: P.mT, y2: P.mT + pH, stroke: '#475467', 'stroke-width': 1, 'pointer-events': 'none', display: 'none' }, svg);
+      fit.hDot = E('circle', { class: 'hover-el', r: 4, fill: '#000', stroke: '#fff', 'stroke-width': 1.5, 'pointer-events': 'none', display: 'none' }, svg);
+
+      // results table
+      const pm = (v, s, dg) => Number.isFinite(s) ? `${v.toFixed(dg)} \u00b1 ${s.toFixed(dg)}` : v.toFixed(dg);
+      const sw = c => `<span class='sw' style='background:${c}'></span>`;
+      $('results').innerHTML = `
+        <tr><th>Max efficiency <i>a</i></th><td>${pm(a, seA, 4)}</td></tr>
+        <tr><th>Rate constant <i>k</i></th><td>${pm(k, seK, 4)}</td></tr>
+        <tr><th>Goodness of fit <i>R</i>\u00b2</th><td>${r2.toFixed(4)}</td></tr>
+        <tr><th>${sw(C.eff)}Efficiency at equimolar point</th><td>${yEff.toFixed(3)}</td></tr>
+        <tr><th>${sw(C.act)}Enzyme activity (0.203\u00b7k)</th><td>${(xAct * 100).toFixed(1)}%</td></tr>
+        <tr><th>${sw(C.h50)}Activity at 50% cleavage</th><td>${Number.isFinite(x50) ? (x50 * 100).toFixed(1) + '%' : 'n/a (a \u2264 0.5)'}</td></tr>`;
+    }
+
+    /* ======================= HOVER ======================= */
+    const tip = $('hoverTip'), svgEl = $('plot');
+    function hideHover() { tip.style.display = 'none'; if (fit) { fit.hLine.setAttribute('display', 'none'); fit.hDot.setAttribute('display', 'none'); } }
+    svgEl.addEventListener('pointermove', ev => {
+      if (!fit || ev.buttons || lblDrag) { hideHover(); return; }
+      const r = svgEl.getBoundingClientRect(), s = P.W / r.width;
+      const x = (ev.clientX - r.left) * s, y = (ev.clientY - r.top) * s;
+      if (x < P.mL || x > P.mL + fit.pW || y < P.mT || y > P.mT + fit.pH) { hideHover(); return; }
+      const R = 10 * s;   // snap radius: 10 screen px, in svg units
+
+      // nearest data point
+      let bp = null, bd = R;
+      for (const p of fit.pts) { const d = Math.hypot(fit.sx(p.x) - x, fit.sy(p.y) - y); if (d <= bd) { bd = d; bp = p; } }
+
+      // nearest point on the fitted curve (sampled around the cursor, within the plotted range)
+      let cx = null, cd = R;
+      const xa = Math.max(x - R, fit.sx(Math.pow(10, fit.lmin))), xb = Math.min(x + R, fit.sx(Math.pow(10, fit.lmax)));
+      for (let px = xa; px <= xb; px += 0.5) {
+        const d = Math.hypot(px - x, fit.sy(model(fit.x2v(px), fit.a, fit.k)) - y);
+        if (d <= cd) { cd = d; cx = px; }
+      }
+
+      let px, py, html;
+      if (bp) {
+        px = fit.sx(bp.x); py = fit.sy(bp.y);
+        html = `<b>Data</b><br>DNA:RNP ${fmtX(bp.x)}<br>Efficiency ${bp.y.toFixed(3)}<br>Fit ${model(bp.x, fit.a, fit.k).toFixed(3)}`;
+      } else if (cx != null) {
+        const xv = fit.x2v(cx), yv = model(xv, fit.a, fit.k);
+        px = cx; py = fit.sy(yv);
+        html = `<b>Fit</b><br>DNA:RNP ${fmtX(xv)}<br>RNP activity ${(xv * 100).toPrecision(3)}%<br>Efficiency ${yv.toFixed(3)}`;
+      } else { hideHover(); return; }
+      fit.hLine.setAttribute('x1', px); fit.hLine.setAttribute('x2', px); fit.hLine.setAttribute('display', 'inline');
+      fit.hDot.setAttribute('cx', px); fit.hDot.setAttribute('cy', py); fit.hDot.setAttribute('display', 'inline');
+      tip.innerHTML = html;
+      tip.style.display = 'block';
+      const w = tip.offsetWidth, h = tip.offsetHeight;
+      let tx = ev.clientX + 14, ty = ev.clientY + 14;
+      if (tx + w > window.innerWidth - 4) tx = ev.clientX - w - 14;
+      if (ty + h > window.innerHeight - 4) ty = ev.clientY - h - 14;
+      tip.style.left = tx + 'px'; tip.style.top = ty + 'px';
+    });
+    svgEl.addEventListener('pointerleave', hideHover);
+
+    /* ======================= EXPORT ======================= */
+    const safe = s => (String(s).replace(/[\/\\:*?"<>|]+/g, '_').trim() || 'rnp_activity');
+    function svgString() {
+      const clone = svgEl.cloneNode(true);
+      clone.querySelectorAll('.hover-el, .lbl > title').forEach(n => n.remove());
+      clone.querySelectorAll('.title-el').forEach(n => n.removeAttribute('display'));
+      clone.setAttribute('width', P.W); clone.setAttribute('height', P.H);
+      const st = document.createElementNS(SVGNS, 'style');
+      st.textContent = 'text{font-family:-apple-system,Helvetica,Arial,sans-serif}';
+      clone.insertBefore(st, clone.firstChild);
+      return new XMLSerializer().serializeToString(clone);
+    }
+    function download(href, name) { const a = document.createElement('a'); a.href = href; a.download = name; a.click(); }
+    $('exportSvg').addEventListener('click', () => {
+      if (!fit) return;
+      const url = URL.createObjectURL(new Blob([svgString()], { type: 'image/svg+xml;charset=utf-8' }));
+      download(url, safe(titleInput.value) + '.svg'); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+    $('exportPng').addEventListener('click', () => {
+      if (!fit) return;
+      const url = URL.createObjectURL(new Blob([svgString()], { type: 'image/svg+xml;charset=utf-8' }));
+      const img = new Image();
+      img.onload = () => {
+        const sc = 3, c = document.createElement('canvas'); c.width = P.W * sc; c.height = P.H * sc;
+        const ctx = c.getContext('2d'); ctx.scale(sc, sc); ctx.drawImage(img, 0, 0, P.W, P.H);
+        URL.revokeObjectURL(url); download(c.toDataURL('image/png'), safe(titleInput.value) + '.png');
+      };
+      img.src = url;
+    });
+
+    /* ======================= WIRING ======================= */
+    /* label dragging */
+    let lblDrag = null;
+    svgEl.addEventListener('pointerdown', ev => {
+      const g = ev.target.closest('.lbl'); if (!g) return;
+      ev.preventDefault(); hideHover();
+      if (ev.target.closest('.close')) { hidden[g.dataset.key] = true; render(); return; }
+      const key = g.dataset.key, o = lblOff[key] || { dx: 0, dy: 0 };
+      lblDrag = { key, g, sx: ev.clientX, sy: ev.clientY, dx: o.dx, dy: o.dy };
+      try { svgEl.setPointerCapture(ev.pointerId); } catch (_) { }
+    });
+    svgEl.addEventListener('pointermove', ev => {
+      if (!lblDrag) return;
+      const k = P.W / svgEl.getBoundingClientRect().width;
+      const o = { dx: lblDrag.dx + (ev.clientX - lblDrag.sx) * k, dy: lblDrag.dy + (ev.clientY - lblDrag.sy) * k };
+      lblOff[lblDrag.key] = o; lblDrag.g.setAttribute('transform', `translate(${o.dx} ${o.dy})`);
+    });
+    svgEl.addEventListener('pointerup', () => { lblDrag = null; });
+    svgEl.addEventListener('dblclick', ev => {
+      const g = ev.target.closest('.lbl'); if (!g || ev.target.closest('.close')) return;
+      delete lblOff[g.dataset.key]; g.setAttribute('transform', 'translate(0 0)');
+    });
+
+    /* on-plot title */
+    function placeTitle() {
+      const r = svgEl.getBoundingClientRect(), k = r.width / P.W;
+      if (!r.width) return;
+      titleInput.style.left = (P.mL * k) + 'px';
+      titleInput.style.width = ((P.W - P.mL - P.mR) * k) + 'px';
+      titleInput.style.top = (8 * k) + 'px';
+      titleInput.style.height = (24 * k) + 'px';
+      titleInput.style.fontSize = (15 * k) + 'px';
+      placePen();
+    }
+    const measureCtx = document.createElement('canvas').getContext('2d');
+    function placePen() {
+      const r = svgEl.getBoundingClientRect(), k = r.width / P.W; if (!r.width) return;
+      const cs = getComputedStyle(titleInput);
+      measureCtx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+      const w = measureCtx.measureText(titleInput.value || titleInput.placeholder).width;
+      const pen = $('titlePen'), cx = (P.mL + (P.W - P.mL - P.mR) / 2) * k;
+      pen.style.fontSize = (14 * k) + 'px';
+      pen.style.left = Math.min(cx + w / 2 + 6 * k, (P.W - P.mR - 14) * k) + 'px';
+      pen.style.top = (11 * k) + 'px';
+    }
+    new ResizeObserver(placeTitle).observe(svgEl);
+    titleInput.addEventListener('input', () => { const t = svgEl.querySelector('.title-el'); if (t) t.textContent = titleInput.value; placePen(); });
+    titleInput.addEventListener('keydown', e => { if (e.key === 'Enter') titleInput.blur(); });
+
+    $('resetLayout').addEventListener('click', () => {
+      for (const k in lblOff) delete lblOff[k];
+      for (const k in hidden) delete hidden[k];
+      render();
+    });
+
+    buildGrid();
+    render();
+    placeTitle();
+
+    function sendHeight() {
+      const height = document.documentElement.scrollHeight || document.body.scrollHeight;
+      window.parent.postMessage({ type: 'resize-iframe', height: height }, '*');
+    }
+    window.addEventListener('load', sendHeight);
+    new MutationObserver(sendHeight).observe(document.body, { attributes: true, childList: true, subtree: true });
+  </script>
+</body>
+
+</html>
