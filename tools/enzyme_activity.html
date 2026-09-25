@@ -68,7 +68,7 @@
 
     /* data grid */
     .grid-wrap {
-      max-height: 300px;
+      max-height: 300px;   /* refined in fitGridHeight() */
       overflow-y: auto;
       border: 1px solid var(--line);
       border-radius: 6px
@@ -113,7 +113,8 @@
       width: 100%;
       border: none;
       padding: 5px 8px;
-      font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font: inherit;
+      font-size: 14px;
       background: transparent;
       color: var(--txt);
       font-variant-numeric: tabular-nums
@@ -230,6 +231,67 @@
 
     .lbl {
       cursor: move
+    }
+
+    .pen {
+      pointer-events: none
+    }
+
+    .pen text {
+      fill: #667085;
+      opacity: .45;
+      transition: opacity .12s, fill .12s
+    }
+
+    .svg-edit::selection {
+      color: transparent;
+      background: rgba(37, 99, 235, .25)
+    }
+
+    .lbl .pen text {
+      opacity: 0
+    }
+
+    .lbl:hover .pen text {
+      opacity: .55
+    }
+
+    #plot [data-edit-target] {
+      transition: fill .12s
+    }
+
+    #plot [data-edit-target]:hover {
+      fill: var(--accent)
+    }
+
+    [data-edit-target].clickable {
+      cursor: text
+    }
+
+    .svg-edit {
+      position: absolute;
+      z-index: 5;
+      border: none;
+      outline: none;
+      box-shadow: none;
+      background: transparent;
+      /* the svg text stays visible and updates live; the input only supplies caret and selection */
+      color: transparent;
+      caret-color: var(--txt);
+      padding: 0;
+      margin: 0;
+      -webkit-appearance: none;
+      appearance: none;
+      font-family: -apple-system, Helvetica, Arial, sans-serif
+    }
+
+    .lbl .grip {
+      opacity: .55;
+      transition: opacity .12s
+    }
+
+    .lbl:hover .grip {
+      opacity: 1
     }
 
     .lbl .close {
@@ -395,7 +457,7 @@
         <button class='btn' id='exportPng'>⤓ PNG</button>
       </div>
       <div class='plotwrap'>
-        <svg id='plot' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 820 520'></svg>
+        <svg id='plot' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 900 640'></svg>
         <input type='text' id='titleInput' value='AsCas12a-TwinStrep activity' placeholder='Click to add a title' spellcheck='false' title='Click to edit the title'>
         <span id='titlePen'>&#9998;</span>
       </div>
@@ -408,7 +470,7 @@
     const SVGNS = 'http://www.w3.org/2000/svg';
     const $ = id => document.getElementById(id);
     const C = { eff: '#4682b4', act: '#fa8072', h50: '#8fbc8f', effBox: '#b0c4de', data: '#dc2626' };
-    const P = { W: 820, H: 520, mL: 70, mR: 24, mT: 44, mB: 56 };
+    const P = { W: 900, H: 640, mL: 100, mR: 28, mT: 76, mB: 96 };
     const model = (x, a, k) => a * (1 - Math.exp(-k / x));
     const titleInput = $('titleInput');
     let fit = null;
@@ -442,11 +504,17 @@
         rows.push({ x: '', y: '' }); tb.appendChild(makeRow(rows.length - 1));
       }
     }
+    function fitGridHeight() {   // show 7 full rows and most of row 8
+      const wrap = document.querySelector('.grid-wrap'), head = document.querySelector('#dataGrid thead');
+      const row = document.querySelector('#dataGrid tbody tr'); if (!row || !row.offsetHeight) return;
+      wrap.style.maxHeight = (head.offsetHeight + row.offsetHeight * 7.8) + 'px';
+    }
     function buildGrid(focus) {
       while (rows.length < Math.max(MIN_ROWS, lastFilled() + 1 + SPARE)) rows.push({ x: '', y: '' });
       const tb = document.querySelector('#dataGrid tbody'); tb.innerHTML = '';
       rows.forEach((r, i) => tb.appendChild(makeRow(i)));
       markBad(); if (typeof markSel === 'function') markSel();
+      fitGridHeight();
       if (focus) { const el = tb.querySelector(`input[data-r='${focus.r}'][data-c='${focus.c}']`); if (el) { el.focus(); el.select(); } }
     }
     function markBad() {
@@ -637,38 +705,61 @@
       return e;
     }
     function T(parent, x, y, txt, attrs = {}) {
-      const t = E('text', Object.assign({ x, y, 'font-size': 12, fill: '#1c2530' }, attrs), parent);
+      const t = E('text', Object.assign({ x, y, 'font-size': 24, fill: '#1c2530' }, attrs), parent);
       t.textContent = txt; return t;
     }
-    function diamond(parent, cx, cy, fill, r = 6) {
+    function diamond(parent, cx, cy, fill, r = 10) {
       return E('path', { d: `M${cx} ${cy - r}L${cx + r} ${cy}L${cx} ${cy + r}L${cx - r} ${cy}Z`, fill }, parent);
     }
     const lblOff = {};   // key -> {dx, dy} in svg units, persists across renders
     const hidden = {};   // key -> true when closed
+    const TEXT_DEFAULTS = {
+      xlab: 'DNA:RNP concentration (log scale)', ylab: 'Cleavage efficiency', legData: 'Data', legFit: 'Fit',
+      eff: 'Efficiency at equimolar point', act: 'Enzyme activity', h50: 'Activity at 50% cleavage'
+    };
+    const texts = Object.assign({}, TEXT_DEFAULTS);
+    let editing = null;   // {key, inp, orig}
+    function addPen(parent, key, x, y, opts = {}) {   // edit symbol (screen only, not clickable)
+      if (editing && editing.key === key) return null;
+      const g = E('g', { class: 'pen hover-el', transform: `translate(${x} ${y})${opts.rotate ? ' rotate(-90)' : ''}` }, parent);
+      g.dataset.edit = key;
+      T(g, 0, 0, '\u270e', { 'font-size': opts.size || 20, 'text-anchor': 'middle', 'dominant-baseline': 'central' });
+      return g;
+    }
     function movable(parent, key) {
       const off = lblOff[key] || { dx: 0, dy: 0 };
       const g = E('g', { class: 'lbl', transform: `translate(${off.dx} ${off.dy})` }, parent);
       g.dataset.key = key;
-      E('title', {}, g).textContent = 'Drag to move, double-click to reset position';
+      E('title', {}, g).textContent = 'Click text to edit, drag to move';
       return g;
+    }
+    function addGrip(g, x, y, h) {   // drag handle on the left edge (screen only)
+      const w = 14, c = E('g', { class: 'grip hover-el', transform: `translate(${x - w - 2} ${y})` }, g);
+      E('rect', { width: w, height: h, rx: 3, fill: '#f1f3f6', stroke: '#98a2b3' }, c);
+      for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++)
+        E('circle', { cx: 4.5 + j * 5, cy: h / 2 + (i - 1) * 5, r: 1.4, fill: '#667085' }, c);
     }
     function addClose(g, x, y) {
       const c = E('g', { class: 'close hover-el', transform: `translate(${x} ${y})` }, g);
       E('title', {}, c).textContent = 'Hide';
-      E('circle', { r: 7, fill: '#fff', stroke: '#98a2b3' }, c);
-      E('path', { d: 'M-3 -3L3 3M3 -3L-3 3', stroke: '#475467', 'stroke-width': 1.5, 'stroke-linecap': 'round' }, c);
+      E('circle', { r: 10, fill: '#fff', stroke: '#98a2b3' }, c);
+      E('path', { d: 'M-4 -4L4 4M4 -4L-4 4', stroke: '#475467', 'stroke-width': 1.5, 'stroke-linecap': 'round' }, c);
     }
-    function labelBox(parent, x, y, txt, fill, key) {
+    function labelBox(parent, x, y, txt, fill, key, val) {
       if (hidden[key]) return;
       const g = movable(parent, key);
       const bg = E('rect', { fill }, g);
-      const t = T(g, x, y, txt, { 'font-size': 13 });
+      const t = T(g, x, y, '', { 'font-size': 26 });
+      E('tspan', { 'data-edit-target': key }, t).textContent = txt;
+      E('tspan', {}, t).textContent = val;
       const b = t.getBBox();
       let dx = 0;
       if (b.x + b.width + 6 > P.W - P.mR) dx = (P.W - P.mR) - (b.x + b.width + 6);   // keep inside plot
       if (dx) t.setAttribute('x', x + dx);
       bg.setAttribute('x', b.x - 5 + dx); bg.setAttribute('y', b.y - 3);
       bg.setAttribute('width', b.width + 10); bg.setAttribute('height', b.height + 6);
+      addGrip(g, b.x - 5 + dx, b.y - 3, b.height + 6);
+      addPen(g, key, b.x + b.width + 5 + dx + 12, b.y + b.height / 2, { size: 18 });
       addClose(g, b.x + b.width + 5 + dx, b.y - 3);
     }
     const fmtX = v => (v >= 1 ? +v.toPrecision(4) : +v.toPrecision(3)).toString();
@@ -715,15 +806,18 @@
       E('rect', { x: P.mL, y: P.mT, width: pW, height: pH, fill: 'none', stroke: '#1c2530', 'stroke-width': 1 }, svg);
       for (const v of uniq) {
         E('line', { x1: sx(v), x2: sx(v), y1: P.mT + pH, y2: P.mT + pH + 5, stroke: '#1c2530' }, svg);
-        T(svg, sx(v), P.mT + pH + 19, fmtX(v), { 'text-anchor': 'middle' });
+        T(svg, sx(v), P.mT + pH + 32, fmtX(v), { 'text-anchor': 'middle' });
       }
       for (let y = 0; y <= 1.0001; y += 0.2) {
         E('line', { x1: P.mL - 5, x2: P.mL, y1: sy(y), y2: sy(y), stroke: '#1c2530' }, svg);
-        T(svg, P.mL - 9, sy(y) + 4, y.toFixed(1), { 'text-anchor': 'end' });
+        T(svg, P.mL - 10, sy(y) + 8, y.toFixed(1), { 'text-anchor': 'end' });
       }
-      T(svg, P.mL + pW / 2, P.H - 12, 'DNA:RNP concentration (log scale)', { 'text-anchor': 'middle', 'font-size': 13 });
-      T(svg, 20, P.mT + pH / 2, 'Cleavage efficiency', { 'text-anchor': 'middle', 'font-size': 13, transform: `rotate(-90 20 ${P.mT + pH / 2})` });
-      T(svg, P.mL + pW / 2, 26, titleInput.value, { 'text-anchor': 'middle', 'font-size': 15, 'font-weight': 600, class: 'title-el', display: 'none' });
+      const xl = T(svg, P.mL + pW / 2, P.H - 16, texts.xlab, { 'text-anchor': 'middle', 'font-size': 26, 'data-edit-target': 'xlab', class: 'clickable' });
+      addPen(svg, 'xlab', P.mL + pW / 2 + xl.getComputedTextLength() / 2 + 16, P.H - 24);
+      const ycy = P.mT + pH / 2;
+      const yl = T(svg, 28, ycy, texts.ylab, { 'text-anchor': 'middle', 'font-size': 26, transform: `rotate(-90 28 ${ycy})`, 'data-edit-target': 'ylab', class: 'clickable' });
+      addPen(svg, 'ylab', 20, ycy - yl.getComputedTextLength() / 2 - 16, { rotate: true });
+      T(svg, P.mL + pW / 2, 48, titleInput.value, { 'text-anchor': 'middle', 'font-size': 30, 'font-weight': 600, class: 'title-el', display: 'none' });
 
       const plot = E('g', { 'clip-path': 'url(#clip)' }, svg);
 
@@ -733,38 +827,42 @@
         const x = Math.pow(10, lmin + (lmax - lmin) * i / 499);
         d += (i ? 'L' : 'M') + sx(x).toFixed(2) + ' ' + sy(model(x, a, k)).toFixed(2);
       }
-      E('path', { d, fill: 'none', stroke: '#000', 'stroke-width': 1.5 }, plot);
+      E('path', { d, fill: 'none', stroke: '#000', 'stroke-width': 3 }, plot);
 
       // guide lines + markers
-      const dash = { 'stroke-dasharray': '5 4', 'stroke-width': 1 };
+      const dash = { 'stroke-dasharray': '8 6', 'stroke-width': 2 };
       const xLeft = P.mL;
       const guides = [];
-      if (yEff >= 0) guides.push({ key: 'eff', x: xEff, y: yEff, col: C.eff, h: true, box: C.effBox, txt: `Efficiency at equimolar point: ${yEff.toFixed(2)}`, off: 1.15 });
-      if (Number.isFinite(xAct) && xAct > 0) guides.push({ key: 'act', x: xAct, y: yAct, col: C.act, h: false, box: C.act, txt: `Enzyme activity: ${(xAct * 100).toFixed(0)}%`, off: 1.2 });
-      if (Number.isFinite(x50) && x50 > 0) guides.push({ key: 'h50', x: x50, y: y50, col: C.h50, h: true, box: C.h50, txt: `Activity at 50% cleavage: ${(x50 * 100).toFixed(0)}%`, off: 1.15 });
+      if (yEff >= 0) guides.push({ key: 'eff', x: xEff, y: yEff, col: C.eff, h: true, box: C.effBox, txt: texts.eff, val: `: ${yEff.toFixed(2)}`, off: 1.15 });
+      if (Number.isFinite(xAct) && xAct > 0) guides.push({ key: 'act', x: xAct, y: yAct, col: C.act, h: false, box: C.act, txt: texts.act, val: `: ${(xAct * 100).toFixed(0)}%`, off: 1.2 });
+      if (Number.isFinite(x50) && x50 > 0) guides.push({ key: 'h50', x: x50, y: y50, col: C.h50, h: true, box: C.h50, txt: texts.h50, val: `: ${(x50 * 100).toFixed(0)}%`, off: 1.15 });
       for (const g of guides) {
         E('line', Object.assign({ x1: sx(g.x), x2: sx(g.x), y1: sy(0), y2: sy(g.y), stroke: g.col }, dash), plot);
         if (g.h) E('line', Object.assign({ x1: xLeft, x2: sx(g.x), y1: sy(g.y), y2: sy(g.y), stroke: g.col }, dash), plot);
       }
 
       // data points
-      for (const p of pts) E('circle', { cx: sx(p.x), cy: sy(p.y), r: 5, fill: C.data }, plot);
+      for (const p of pts) E('circle', { cx: sx(p.x), cy: sy(p.y), r: 8, fill: C.data }, plot);
       for (const g of guides) diamond(plot, sx(g.x), sy(g.y), g.col);
 
       // legend (lower left)
       if (!hidden.legend) {
-        const lg = movable(svg, 'legend'), lx = P.mL + 12, ly = P.mT + pH - 60;
-        const lbg = E('rect', { x: lx - 6, y: ly - 6, rx: 4, fill: '#fff', 'fill-opacity': 0.85, stroke: '#d0d5dd' }, lg);
-        E('circle', { cx: lx + 12, cy: ly + 9, r: 5, fill: C.data }, lg);
-        T(lg, lx + 32, ly + 13, 'Data');
-        E('line', { x1: lx, x2: lx + 24, y1: ly + 33, y2: ly + 33, stroke: '#000', 'stroke-width': 1.5 }, lg);
-        T(lg, lx + 32, ly + 37, 'Fit');
-        const lb = lg.getBBox(), lw = lb.width + 8;
-        lbg.setAttribute('width', lw); lbg.setAttribute('height', lb.height + 14);
-        addClose(lg, lx - 6 + lw, ly - 6);
+        const lg = movable(svg, 'legend'), lx = P.mL + 16, ly = P.mT + pH - 100;
+        const lbg = E('rect', { x: lx - 10, y: ly - 10, rx: 4, fill: '#fff', 'fill-opacity': 0.85, stroke: '#d0d5dd' }, lg);
+        E('circle', { cx: lx + 16, cy: ly + 18, r: 8, fill: C.data }, lg);
+        const td = T(lg, lx + 44, ly + 26, texts.legData, { 'data-edit-target': 'legData' });
+        E('line', { x1: lx, x2: lx + 32, y1: ly + 62, y2: ly + 62, stroke: '#000', 'stroke-width': 3 }, lg);
+        const tf = T(lg, lx + 44, ly + 70, texts.legFit, { 'data-edit-target': 'legFit' });
+        const right = Math.max(lx + 44 + td.getComputedTextLength(), lx + 44 + tf.getComputedTextLength());
+        const lw = right - (lx - 10) + 40, lh = 96;
+        lbg.setAttribute('width', lw); lbg.setAttribute('height', lh);
+        addPen(lg, 'legData', lx + 44 + td.getComputedTextLength() + 16, ly + 18, { size: 18 });
+        addPen(lg, 'legFit', lx + 44 + tf.getComputedTextLength() + 16, ly + 62, { size: 18 });
+        addGrip(lg, lx - 10, ly - 10, lh);
+        addClose(lg, lx - 10 + lw, ly - 10);
       }
 
-      for (const g of guides) labelBox(svg, sx(g.off * g.x), sy(g.y + 0.04), g.txt, g.box, g.key);
+      for (const g of guides) labelBox(svg, sx(g.off * g.x), sy(g.y + 0.04), g.txt, g.box, g.key, g.val);
 
       // hover elements (excluded from export)
       fit.hLine = E('line', { class: 'hover-el', y1: P.mT, y2: P.mT + pH, stroke: '#475467', 'stroke-width': 1, 'pointer-events': 'none', display: 'none' }, svg);
@@ -780,6 +878,7 @@
         <tr><th>${sw(C.eff)}Efficiency at equimolar point</th><td>${yEff.toFixed(3)}</td></tr>
         <tr><th>${sw(C.act)}Enzyme activity (0.203\u00b7k)</th><td>${(xAct * 100).toFixed(1)}%</td></tr>
         <tr><th>${sw(C.h50)}Activity at 50% cleavage</th><td>${Number.isFinite(x50) ? (x50 * 100).toFixed(1) + '%' : 'n/a (a \u2264 0.5)'}</td></tr>`;
+      placeEditor();
     }
 
     /* ======================= HOVER ======================= */
@@ -856,25 +955,107 @@
     });
 
     /* ======================= WIRING ======================= */
+    /* in-place text editing: borderless input laid exactly over the svg text, like the title */
+    function caretIndexAt(key, cx, cy) {   // character index under a click, from the svg text itself
+      const el = svgEl.querySelector(`[data-edit-target='${key}']`);
+      const n = texts[key].length;
+      if (!el || cx == null) return n;
+      const text = el.closest('text');
+      const p = svgEl.createSVGPoint(); p.x = cx; p.y = cy;
+      const lp = p.matrixTransform(text.getScreenCTM().inverse());
+      let i = text.getCharNumAtPosition(lp);
+      if (i < 0) {   // between/outside glyphs: nearest end
+        const ext0 = n ? text.getExtentOfChar(0) : null;
+        return ext0 && lp.x < ext0.x ? 0 : n;
+      }
+      const ext = text.getExtentOfChar(i);
+      if (lp.x > ext.x + ext.width / 2) i++;
+      return Math.min(i, n);   // labels: only the prefix is editable
+    }
+    function startEdit(key, cx, cy) {
+      const caret = caretIndexAt(key, cx, cy);
+      if (editing) finishEdit(true);
+      const inp = document.createElement('input');
+      inp.className = 'svg-edit'; inp.value = texts[key]; inp.spellcheck = false;
+      editing = { key, inp, orig: texts[key] };
+      document.querySelector('.plotwrap').appendChild(inp);
+      inp.addEventListener('input', () => { texts[key] = inp.value; render(); });
+      inp.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); finishEdit(true); }
+        else if (e.key === 'Escape') { e.preventDefault(); finishEdit(false); }
+      });
+      inp.addEventListener('blur', () => finishEdit(true));
+      render();
+      setTimeout(() => { inp.focus(); inp.setSelectionRange(caret, caret); }, 0);
+    }
+    function finishEdit(ok) {
+      if (!editing) return;
+      const { key, inp, orig } = editing; editing = null;
+      texts[key] = ok ? (inp.value.trim() || TEXT_DEFAULTS[key]) : orig;
+      inp.remove(); render();
+    }
+    function placeEditor() {   // called at the end of render()
+      if (!editing) return;
+      const { key, inp } = editing;
+      const el = svgEl.querySelector(`[data-edit-target='${key}']`); if (!el) return;
+      const text = el.closest('text'), wrap = document.querySelector('.plotwrap');
+      const wr = wrap.getBoundingClientRect(), k = svgEl.getBoundingClientRect().width / P.W;
+      const fs = (+text.getAttribute('font-size') || 24) * k;
+      const ff = getComputedStyle(text).fontFamily;
+      inp.style.fontFamily = ff;
+      measureCtx.font = `${fs}px ${ff}`;
+      const w = Math.max(measureCtx.measureText(inp.value).width, 4) + 3;
+      // baseline position inside the input's line box, from the actual font metrics
+      const L = Math.round(fs * 1.3), m = measureCtx.measureText('Hg');
+      const A = m.fontBoundingBoxAscent, D = m.fontBoundingBoxDescent;
+      const bOff = Number.isFinite(A) && Number.isFinite(D) ? (L - (A + D)) / 2 + A : fs * 0.93;
+      const anchor = text.getAttribute('text-anchor') || 'start';
+      let x, y;
+      if (key === 'ylab') {   // rotated: center on the label position
+        const p = svgEl.createSVGPoint(); p.x = +text.getAttribute('x'); p.y = +text.getAttribute('y');
+        const sp = p.matrixTransform(text.getScreenCTM());
+        x = sp.x - wr.left; y = sp.y - wr.top;
+        // box center sits left of the baseline by (baseline offset - half height)
+        Object.assign(inp.style, { left: (x - (bOff - L / 2) - w / 2) + 'px', top: (y - L / 2) + 'px', transformOrigin: 'center', transform: 'rotate(-90deg)' });
+      } else {
+        const p = svgEl.createSVGPoint(); p.x = +text.getAttribute('x'); p.y = +text.getAttribute('y');
+        const sp = p.matrixTransform(text.getScreenCTM());
+        x = sp.x - wr.left - (anchor === 'middle' ? w / 2 : anchor === 'end' ? w : 0);
+        const base = sp.y - wr.top;
+        y = base - bOff;
+        Object.assign(inp.style, { left: x + 'px', top: y + 'px', transform: 'none' });
+      }
+      Object.assign(inp.style, { width: w + 'px', height: L + 'px', fontSize: fs + 'px', lineHeight: L + 'px' });
+    }
+
     /* label dragging */
     let lblDrag = null;
     svgEl.addEventListener('pointerdown', ev => {
+      const ax = ev.target.closest('.clickable[data-edit-target]');
+      if (ax) { ev.preventDefault(); hideHover(); startEdit(ax.dataset.editTarget, ev.clientX, ev.clientY); return; }
       const g = ev.target.closest('.lbl'); if (!g) return;
       ev.preventDefault(); hideHover();
       if (ev.target.closest('.close')) { hidden[g.dataset.key] = true; render(); return; }
       const key = g.dataset.key, o = lblOff[key] || { dx: 0, dy: 0 };
-      lblDrag = { key, g, sx: ev.clientX, sy: ev.clientY, dx: o.dx, dy: o.dy };
+      const tEl = ev.target.closest('[data-edit-target]');
+      const editKey = tEl ? tEl.dataset.editTarget : (ev.target.closest('text') && TEXT_DEFAULTS[key] ? key : null);
+      lblDrag = { key, g, sx: ev.clientX, sy: ev.clientY, dx: o.dx, dy: o.dy, editKey, moved: false };
       try { svgEl.setPointerCapture(ev.pointerId); } catch (_) { }
     });
     svgEl.addEventListener('pointermove', ev => {
       if (!lblDrag) return;
       const k = P.W / svgEl.getBoundingClientRect().width;
+      if (Math.hypot(ev.clientX - lblDrag.sx, ev.clientY - lblDrag.sy) > 3) lblDrag.moved = true;
+      if (!lblDrag.moved) return;
       const o = { dx: lblDrag.dx + (ev.clientX - lblDrag.sx) * k, dy: lblDrag.dy + (ev.clientY - lblDrag.sy) * k };
       lblOff[lblDrag.key] = o; lblDrag.g.setAttribute('transform', `translate(${o.dx} ${o.dy})`);
     });
-    svgEl.addEventListener('pointerup', () => { lblDrag = null; });
-    svgEl.addEventListener('dblclick', ev => {
-      const g = ev.target.closest('.lbl'); if (!g || ev.target.closest('.close')) return;
+    svgEl.addEventListener('pointerup', () => {
+      const d = lblDrag; lblDrag = null;
+      if (d && !d.moved && d.editKey) startEdit(d.editKey, d.sx, d.sy);
+    });
+    svgEl.addEventListener('dblclick', ev => {   // double-click the grip to reset position
+      const gr = ev.target.closest('.grip'), g = gr && gr.closest('.lbl'); if (!g) return;
       delete lblOff[g.dataset.key]; g.setAttribute('transform', 'translate(0 0)');
     });
 
@@ -884,9 +1065,9 @@
       if (!r.width) return;
       titleInput.style.left = (P.mL * k) + 'px';
       titleInput.style.width = ((P.W - P.mL - P.mR) * k) + 'px';
-      titleInput.style.top = (8 * k) + 'px';
-      titleInput.style.height = (24 * k) + 'px';
-      titleInput.style.fontSize = (15 * k) + 'px';
+      titleInput.style.top = (20 * k) + 'px';
+      titleInput.style.height = (38 * k) + 'px';
+      titleInput.style.fontSize = (30 * k) + 'px';
       placePen();
     }
     const measureCtx = document.createElement('canvas').getContext('2d');
@@ -896,9 +1077,9 @@
       measureCtx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
       const w = measureCtx.measureText(titleInput.value || titleInput.placeholder).width;
       const pen = $('titlePen'), cx = (P.mL + (P.W - P.mL - P.mR) / 2) * k;
-      pen.style.fontSize = (14 * k) + 'px';
-      pen.style.left = Math.min(cx + w / 2 + 6 * k, (P.W - P.mR - 14) * k) + 'px';
-      pen.style.top = (11 * k) + 'px';
+      pen.style.fontSize = (24 * k) + 'px';
+      pen.style.left = Math.min(cx + w / 2 + 6 * k, (P.W - P.mR - 24) * k) + 'px';
+      pen.style.top = (27 * k) + 'px';
     }
     new ResizeObserver(placeTitle).observe(svgEl);
     titleInput.addEventListener('input', () => { const t = svgEl.querySelector('.title-el'); if (t) t.textContent = titleInput.value; placePen(); });
