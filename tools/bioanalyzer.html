@@ -138,6 +138,147 @@
       height: auto
     }
 
+    /* gel area + levels slider */
+    #gelArea {
+      display: flex;
+      align-items: stretch;
+      gap: 8px
+    }
+
+    #gelArea[hidden] {
+      display: none
+    }
+
+    #gelArea .stage {
+      flex: 0 1 auto
+    }
+
+    #levelsPanel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 30px;
+      flex-shrink: 0;
+      padding: 48px 0 20px
+    }
+
+    #levelsTrack {
+      position: relative;
+      flex: 1;
+      width: 14px;
+      border-radius: 3px;
+      border: 1px solid var(--line);
+      background: linear-gradient(to bottom, #141414, #ffffff)
+    }
+
+    .lvl-handle {
+      position: absolute;
+      left: -6px;
+      right: -6px;
+      height: 9px;
+      background: #fff;
+      border: 1.5px solid #444;
+      border-radius: 3px;
+      cursor: ns-resize;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
+      transform: translateY(-50%);
+      touch-action: none
+    }
+
+    .lvl-handle::after {
+      content: '';
+      display: block;
+      margin: 2px auto 0;
+      width: 10px;
+      height: 2px;
+      background: #999;
+      border-radius: 1px
+    }
+
+    #levelsReset {
+      margin-top: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: #fff;
+      color: var(--muted);
+      cursor: pointer
+    }
+
+    #levelsReset:hover {
+      border-color: var(--accent);
+      color: var(--accent)
+    }
+
+    /* y-scale slider (vertical, right of plot) */
+    .pwrap {
+      display: flex;
+      gap: 8px
+    }
+
+    .pwrap #profileSvg {
+      flex: 1;
+      min-width: 0
+    }
+
+    #yPanel {
+      position: relative;
+      width: 30px;
+      flex-shrink: 0
+    }
+
+    #yTrack {
+      position: absolute;
+      left: 8px;
+      width: 14px;
+      border-radius: 3px;
+      border: 1px solid var(--line);
+      background: linear-gradient(to bottom, var(--panel2), #c7ccd4)
+    }
+
+    #yScaleVal {
+      position: absolute;
+      left: -6px;
+      right: -6px;
+      text-align: center;
+      font-size: 11px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums
+    }
+
+    /* hover crosshair + tooltip */
+    .hover-line {
+      stroke: #475467;
+      stroke-width: 1;
+      pointer-events: none;
+      display: none
+    }
+
+    .hover-dot {
+      fill: var(--trace);
+      stroke: #fff;
+      stroke-width: 1.5;
+      pointer-events: none;
+      display: none
+    }
+
+    #hoverTip {
+      position: fixed;
+      z-index: 10;
+      pointer-events: none;
+      display: none;
+      background: rgba(28, 37, 48, .92);
+      color: #fff;
+      font-size: 12px;
+      line-height: 1.35;
+      padding: 4px 8px;
+      border-radius: 5px;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums
+    }
+
     /* gel overlay */
     .axis-lbl {
       fill: var(--muted);
@@ -313,6 +454,13 @@
       </div>
       <div id="gelArea" hidden>
         <div class="stage" id="gelStage"><canvas id="gelCanvas"></canvas><svg id="gelSvg"></svg></div>
+        <div id="levelsPanel">
+          <div id="levelsTrack">
+            <div class="lvl-handle" id="handleHi" title="Upper bound (saturation)"></div>
+            <div class="lvl-handle" id="handleLo" title="Lower bound (background)"></div>
+          </div>
+          <button id="levelsReset" title="Reset intensity range">A</button>
+        </div>
       </div>
     </div>
 
@@ -321,9 +469,17 @@
         <h2 id="profileTitle">Profile</h2>
         <button id="exportProfile" class="btn">⤓ Export electropherogram</button>
       </div>
-      <svg id="profileSvg" viewBox="0 0 1000 280"></svg>
+      <div class="pwrap">
+        <svg id="profileSvg" viewBox="0 0 1000 280"></svg>
+        <div id="yPanel">
+          <div id="yTrack"><div class="lvl-handle" id="yHandle" title="Y-axis upper limit (double-click to reset)"></div></div>
+          <div id="yScaleVal">×1.0</div>
+        </div>
+      </div>
     </div>
   </div>
+
+  <div id="hoverTip"></div>
 
   <script>
     "use strict";
@@ -331,7 +487,7 @@
     const LADDER_TICKS = [35, 50, 100, 200, 300, 500, 700, 1000, 2000, 3000, 7000, 10380];
     const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
     const SVGNS = "http://www.w3.org/2000/svg";
-    const state = { samples: [], lanes: [], ladder: null, selected: null, showRegions: true };
+    const state = { samples: [], lanes: [], ladder: null, selected: null, showRegions: true, lvlLo: 0, lvlHi: 1, yZoom: 1 };
 
     /* ============================ XML PARSING ============================ */
     function childText(el, tag) { if (!el) return null; for (const c of el.children) if (c.tagName === tag) return c.textContent; return null; }
@@ -470,10 +626,16 @@
       const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, d.W, d.H);
       const H = Math.round(d.bot - d.top);
+      const lo = state.lvlLo, span = Math.max(state.lvlHi - state.lvlLo, 1e-3);
       state.lanes.forEach((s, li) => {
         const x0 = laneX(li);
+        if (!s.gelT || s.gelT.length !== H) {
+          s.gelT = new Float32Array(H);
+          for (let r = 0; r < H; r++)
+            s.gelT[r] = Math.min(1, Math.pow(Math.max(0, valAtSize(s, YtoSize(d.top + r + 0.5))) / state.Imax, 0.5));
+        }
         for (let r = 0; r < H; r++) {
-          const inten = Math.min(1, Math.pow(Math.max(0, valAtSize(s, YtoSize(d.top + r + 0.5))) / state.Imax, 0.5));
+          const inten = clamp((s.gelT[r] - lo) / span, 0, 1);
           const g = Math.round(255 - inten * 235);
           ctx.fillStyle = `rgb(${g},${g},${g})`; ctx.fillRect(x0, d.top + r, GEL.laneW, 1);
         }
@@ -492,6 +654,7 @@
       }
       const yt = E('text', { class: 'axis-lbl', x: GEL.mL - 8, y: d.top - 16 }); yt.textContent = 'bp'; svg.appendChild(yt);
       state.lanes.forEach((s, li) => buildLane(svg, s, li, d));
+      state.gelHover = E('line', { class: 'hover-line hover-el' }); svg.appendChild(state.gelHover);
       markSelection();
     }
     function buildLane(svg, s, li, d) {
@@ -564,6 +727,36 @@
       svg.appendChild(E('rect', { class: 'lane-sel', x: laneX(li) - 2, y: d.top - 2, width: GEL.laneW + 4, height: d.bot - d.top + 4 }));
     }
 
+    /* ============================ GEL LEVELS ============================ */
+    const lvlTrack = document.getElementById('levelsTrack');
+    const handleHi = document.getElementById('handleHi'), handleLo = document.getElementById('handleLo');
+    function placeLevelHandles() {
+      handleHi.style.top = ((1 - state.lvlHi) * 100) + '%';
+      handleLo.style.top = ((1 - state.lvlLo) * 100) + '%';
+    }
+    function setLevels(lo, hi) {
+      state.lvlLo = clamp(lo, 0, 0.99); state.lvlHi = clamp(hi, state.lvlLo + 0.01, 1);
+      placeLevelHandles(); drawGelBands();
+    }
+    function lvlDrag(which) {
+      return ev => {
+        ev.preventDefault();
+        const tg = ev.currentTarget; try { tg.setPointerCapture(ev.pointerId); } catch (_) { }
+        const move = e => {
+          const r = lvlTrack.getBoundingClientRect();
+          const v = clamp(1 - (e.clientY - r.top) / (r.height || 1), 0, 1);
+          if (which === 'hi') setLevels(state.lvlLo, Math.max(v, state.lvlLo + 0.01));
+          else setLevels(Math.min(v, state.lvlHi - 0.01), state.lvlHi);
+        };
+        const up = () => { tg.removeEventListener('pointermove', move); tg.removeEventListener('pointerup', up); };
+        tg.addEventListener('pointermove', move); tg.addEventListener('pointerup', up);
+      };
+    }
+    handleHi.addEventListener('pointerdown', lvlDrag('hi'));
+    handleLo.addEventListener('pointerdown', lvlDrag('lo'));
+    document.getElementById('levelsReset').addEventListener('click', () => setLevels(0, 1));
+    placeLevelHandles();
+
     /* ============================ PROFILE ============================ */
     const P = { W: 1000, H: 280, mL: 56, mR: 18, mT: 34, mB: 36 };
     function renderProfile(s) {
@@ -577,7 +770,8 @@
         const sz = s.sizeArr[i];
         if (sz >= s.minSize && sz <= s.maxSize) pts.push({ sz, y: s.valArr[i] });
       }
-      const vmax = Math.max(1, ...pts.map(p => p.y)), vmin = Math.min(0, ...pts.map(p => p.y));
+      const vmin = Math.min(0, ...pts.map(p => p.y));
+      const vmax = vmin + (Math.max(1, ...pts.map(p => p.y)) - vmin) / state.yZoom;
       const Y = v => P.mT + (1 - (v - vmin) / (vmax - vmin)) * pH;
 
       const grid = E('g', { class: 'p-grid' }), axis = E('g', { class: 'p-axis' });
@@ -589,15 +783,21 @@
       for (let k = 0; k <= 4; k++) {
         const val = vmin + (vmax - vmin) * k / 4, y = Y(val);
         grid.appendChild(E('line', { x1: P.mL, y1: y, x2: P.mL + pW, y2: y }));
-        const t = E('text', { x: P.mL - 8, y: y + 3, 'text-anchor': 'end' }); t.textContent = Math.round(val); axis.appendChild(t);
+        const t = E('text', { x: P.mL - 8, y: y + 3, 'text-anchor': 'end' }); t.textContent = (vmax - vmin) < 20 ? val.toFixed(1) : Math.round(val); axis.appendChild(t);
       }
       svg.appendChild(grid);
       const xl = E('text', { x: P.mL + pW / 2, y: P.H - 2, 'text-anchor': 'middle', class: 'p-axis-title' }); xl.textContent = 'Size (bp)'; svg.appendChild(xl);
       const yl = E('text', { x: 14, y: P.mT + pH / 2, 'text-anchor': 'middle', class: 'p-axis-title', transform: `rotate(-90 14 ${P.mT + pH / 2})` }); yl.textContent = 'Fluorescence (FU)'; svg.appendChild(yl);
 
       let d = ''; for (let i = 0; i < pts.length; i++) d += (i ? 'L' : 'M') + sx(pts[i].sz).toFixed(1) + ' ' + Y(pts[i].y).toFixed(1) + ' ';
-      svg.appendChild(E('path', { class: 'p-trace', d }));
+      const defs = E('defs', {}), cp = E('clipPath', { id: 'pclip' });
+      cp.appendChild(E('rect', { x: P.mL, y: P.mT, width: pW, height: pH })); defs.appendChild(cp); svg.appendChild(defs);
+      svg.appendChild(E('path', { class: 'p-trace', d, 'clip-path': 'url(#pclip)' }));
       svg.appendChild(axis);
+      state.prof = { sx, x2size, Y, pW, pH };
+      state.profHover = E('line', { class: 'hover-line hover-el', y1: P.mT, y2: P.mT + pH });
+      state.profDot = E('circle', { class: 'hover-dot hover-el', r: 3, 'clip-path': 'url(#pclip)' });
+      svg.appendChild(state.profHover); svg.appendChild(state.profDot);
 
       const maxH = Math.max(...s.peaks.map(p => p.height || 0), 1);
       for (const p of s.peaks) {
@@ -649,6 +849,51 @@
     function syncRegion(s) { if (s._place) s._place(); if (s._conc) s._conc(); if (state.selected === s && state.profilePlace) state.profilePlace(); }
     function selectLane(s) { state.selected = s; markSelection(); renderProfile(s); }
 
+    /* ============================ HOVER ============================ */
+    const hoverTip = document.getElementById('hoverTip');
+    const fmtFU = v => (Math.abs(v) < 10 ? v.toFixed(2) : v.toFixed(1)) + ' FU';
+    function showHoverTip(ev, html) {
+      hoverTip.innerHTML = html; hoverTip.style.display = 'block';
+      const w = hoverTip.offsetWidth, h = hoverTip.offsetHeight;
+      let x = ev.clientX + 14, y = ev.clientY + 14;
+      if (x + w > window.innerWidth - 4) x = ev.clientX - w - 14;
+      if (y + h > window.innerHeight - 4) y = ev.clientY - h - 14;
+      hoverTip.style.left = x + 'px'; hoverTip.style.top = y + 'px';
+    }
+    function hideHover() {
+      hoverTip.style.display = 'none';
+      [state.gelHover, state.profHover, state.profDot].forEach(el => { if (el) el.style.display = 'none'; });
+    }
+
+    const gelSvgEl = document.getElementById('gelSvg');
+    gelSvgEl.addEventListener('pointermove', ev => {
+      if (!state.lanes.length || !state.gelHover || ev.buttons) { hideHover(); return; }
+      const d = gelDims(), r = gelSvgEl.getBoundingClientRect(), k = d.W / r.width;
+      const x = (ev.clientX - r.left) * k, y = (ev.clientY - r.top) * k;
+      const li = Math.floor((x - GEL.mL) / (GEL.laneW + GEL.gap)), x0 = laneX(li);
+      if (li < 0 || li >= state.lanes.length || x > x0 + GEL.laneW || y < d.top || y > d.bot) { hideHover(); return; }
+      const s = state.lanes[li], size = YtoSize(y);
+      const L = state.gelHover;
+      L.setAttribute('x1', x0); L.setAttribute('x2', x0 + GEL.laneW); L.setAttribute('y1', y); L.setAttribute('y2', y);
+      L.style.display = 'block';
+      showHoverTip(ev, `<b>${s.isLadder ? 'Ladder' : s.name}</b><br>${Math.round(size)} bp<br>${fmtFU(valAtSize(s, size))}`);
+    });
+    gelSvgEl.addEventListener('pointerleave', hideHover);
+
+    const profSvgEl = document.getElementById('profileSvg');
+    profSvgEl.addEventListener('pointermove', ev => {
+      const s = state.selected, pr = state.prof;
+      if (!s || !pr || ev.buttons) { hideHover(); return; }
+      const r = profSvgEl.getBoundingClientRect(), k = P.W / r.width;
+      const x = (ev.clientX - r.left) * k, y = (ev.clientY - r.top) * k;
+      if (x < P.mL || x > P.mL + pr.pW || y < P.mT || y > P.mT + pr.pH) { hideHover(); return; }
+      const size = pr.x2size(x), v = valAtSize(s, size);
+      state.profHover.setAttribute('x1', x); state.profHover.setAttribute('x2', x); state.profHover.style.display = 'block';
+      state.profDot.setAttribute('cx', x); state.profDot.setAttribute('cy', pr.Y(v)); state.profDot.style.display = 'block';
+      showHoverTip(ev, `${Math.round(size)} bp<br>${fmtFU(v)}`);
+    });
+    profSvgEl.addEventListener('pointerleave', hideHover);
+
     /* ============================ EXPORT ============================ */
     const EXPORT_CSS = `
 text{font-family:-apple-system,Helvetica,Arial,sans-serif}
@@ -667,7 +912,7 @@ text{font-family:-apple-system,Helvetica,Arial,sans-serif}
 .p-roi-band{fill:rgba(37,99,235,.12)}.p-bar{stroke:#2563eb;stroke-width:2}`;
     function exportSVG(svg, w, h, bgCanvas, filename) {
       const clone = svg.cloneNode(true);
-      clone.querySelectorAll('.lane-hit,.lane-sel,.roi-mid,.roi-edge-hit,.p-bar-hit,.tip').forEach(n => n.remove());
+      clone.querySelectorAll('.lane-hit,.lane-sel,.roi-mid,.roi-edge-hit,.p-bar-hit,.tip,.hover-el').forEach(n => n.remove());
       const st = document.createElementNS(SVGNS, 'style'); st.textContent = EXPORT_CSS; clone.insertBefore(st, clone.firstChild);
       clone.setAttribute('xmlns', SVGNS); clone.setAttribute('width', w); clone.setAttribute('height', h);
       const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(clone)], { type: 'image/svg+xml;charset=utf-8' }));
@@ -710,6 +955,27 @@ text{font-family:-apple-system,Helvetica,Arial,sans-serif}
       if (state.selected)
         exportSVG(document.getElementById('profileSvg'), P.W, P.H, null, `${safe(state.xmlBase)}_${safe(state.selected.name)}.png`);
     });
+    // vertical y-zoom slider: aligned to plot area; handle at top = 1x, bottom = 100x
+    const yTrack = document.getElementById('yTrack'), yHandle = document.getElementById('yHandle'), yScaleVal = document.getElementById('yScaleVal');
+    yTrack.style.top = (P.mT / P.H * 100) + '%';
+    yTrack.style.height = ((P.H - P.mT - P.mB) / P.H * 100) + '%';
+    yScaleVal.style.top = ((P.H - P.mB) / P.H * 100) + '%';
+    yScaleVal.style.marginTop = '6px';
+    function setYZoom(f) {   // f: 0 (top, 1x) to 1 (bottom, 100x)
+      state.yFrac = clamp(f, 0, 1); state.yZoom = Math.pow(10, state.yFrac * 2);
+      yHandle.style.top = (state.yFrac * 100) + '%';
+      yScaleVal.textContent = '×' + (state.yZoom < 10 ? state.yZoom.toFixed(1) : Math.round(state.yZoom));
+      if (state.selected) renderProfile(state.selected);
+    }
+    yHandle.addEventListener('pointerdown', ev => {
+      ev.preventDefault();
+      const tg = ev.currentTarget; try { tg.setPointerCapture(ev.pointerId); } catch (_) { }
+      const move = e => { const r = yTrack.getBoundingClientRect(); setYZoom((e.clientY - r.top) / (r.height || 1)); };
+      const up = () => { tg.removeEventListener('pointermove', move); tg.removeEventListener('pointerup', up); };
+      tg.addEventListener('pointermove', move); tg.addEventListener('pointerup', up);
+    });
+    yHandle.addEventListener('dblclick', () => setYZoom(0));
+    setYZoom(0);
     document.getElementById('showRegions').addEventListener('change', e => {
       state.showRegions = e.target.checked;
       renderGel(); if (state.selected) renderProfile(state.selected);
