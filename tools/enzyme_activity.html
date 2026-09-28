@@ -49,11 +49,11 @@
 
     .inputs {
       display: grid;
-      grid-template-columns: minmax(220px, 300px) 1fr;
-      gap: 24px
+      grid-template-columns: clamp(180px, 34%, 300px) minmax(0, 1fr);
+      gap: 20px
     }
 
-    @media (max-width: 700px) {
+    @media (max-width: 460px) {
       .inputs {
         grid-template-columns: 1fr
       }
@@ -89,6 +89,9 @@
       padding: 5px 8px;
       text-align: left;
       width: auto;
+      white-space: normal;
+      line-height: 1.25;
+      vertical-align: bottom;
       z-index: 1
     }
 
@@ -353,7 +356,7 @@
 
     th,
     td {
-      padding: 5px 10px;
+      padding: 5px 8px;
       border-bottom: 1px solid var(--line);
       text-align: left;
       font-variant-numeric: tabular-nums
@@ -363,6 +366,10 @@
       color: var(--muted);
       font-weight: 500;
       width: 45%
+    }
+
+    #results td {
+      white-space: nowrap
     }
 
     .sw {
@@ -1082,6 +1089,7 @@
       pen.style.top = (27 * k) + 'px';
     }
     new ResizeObserver(placeTitle).observe(svgEl);
+    new ResizeObserver(() => fitGridHeight()).observe(document.querySelector('#dataGrid thead'));
     titleInput.addEventListener('input', () => { const t = svgEl.querySelector('.title-el'); if (t) t.textContent = titleInput.value; placePen(); });
     titleInput.addEventListener('keydown', e => { if (e.key === 'Enter') titleInput.blur(); });
 
