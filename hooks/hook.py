@@ -1,3 +1,4 @@
+import os
 import posixpath
 import re
 
@@ -44,3 +45,16 @@ def _render(path, alt, page):
 def on_page_markdown(markdown, page, **kwargs):
     markdown = MD.sub(lambda m: _render(m["path"], m["alt"], page), markdown)
     return WIKI.sub(lambda m: _render(m["path"], m["alt"] or "", page), markdown)
+
+
+def on_files(files, config):
+    """Rewrite output paths of protocol pages to their number (e.g., 21.02/), giving short URLs."""
+    for f in files.documentation_pages():
+        m = re.match(r"(\d{2}\.\d{2})\b", f.name)
+        if m:
+            f.dest_uri = f"{m.group(1)}/index.html"
+            f.url = f"{m.group(1)}/"
+            f.abs_dest_path = os.path.normpath(
+                os.path.join(config["site_dir"], f.dest_uri)
+            )
+    return files

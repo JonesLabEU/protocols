@@ -60,4 +60,4 @@ plugins:
         </svg>
 
 hooks:
-  - hooks/obsidian_img.py
+  - hooks/hook.py
