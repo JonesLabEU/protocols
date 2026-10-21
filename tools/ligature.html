@@ -242,12 +242,12 @@ function centerline(q) {
 function computeSides(CL) {
   const all = [], out = new Map();
   for (const [id, c] of CL) { out.set(id, c.segs.map(q => q.pref || 1)); c.segs.forEach((q, k) => all.push({id, k, s: q})); }
-  const Dmax = 2.05 * TH;
+  const Dmax = 2.6 * TH;
   for (const X of all) {
     if (X.s.pref) continue;
     let best = null, bd = Infinity;
     for (const Y of all) {
-      if (Y === X || dot(X.s.u, Y.s.u) > -0.999) continue;
+      if (Y === X || dot(X.s.u, Y.s.u) > -0.7) continue;  // near enough to antiparallel to pair with
       const delta = dot(sub(Y.s.A, X.s.A), X.s.nl), ad = Math.abs(delta);
       if (ad > Dmax || ad >= bd) continue;
       const t1 = dot(sub(Y.s.A, X.s.A), X.s.u), t2 = dot(sub(Y.s.B, X.s.A), X.s.u);
@@ -600,11 +600,18 @@ function zList() {  // every object, bottom first
   for (const q of strands) live.set('s:' + q.id, {kind: 's', id: q.id, obj: q});
   const out = [];
   for (const k of zOrder) if (live.has(k)) { out.push(live.get(k)); live.delete(k); }
-  for (const v of live.values()) out.push(v);
+  for (const v of live.values()) {  // anything not placed yet: proteins below the nucleic acids
+    const at = v.kind === 'b' ? out.findIndex(o => o.kind === 's') : -1;
+    at >= 0 ? out.splice(at, 0, v) : out.push(v);
+  }
   zOrder = out.map(o => o.kind + ':' + o.id);
   return out;
 }
-const zAdd = k => { if (!zOrder.includes(k)) zOrder.push(k); };
+function zAdd(k) {
+  if (zOrder.includes(k)) return;
+  const at = k[0] === 'b' ? zOrder.findIndex(x => x[0] === 's') : -1;
+  at >= 0 ? zOrder.splice(at, 0, k) : zOrder.push(k);
+}
 function selObj() {
   if (selImport != null) { const m = imports.find(x => x.id === selImport); return m ? {kind: 'm', objs: [m]} : null; }
   if (selBlob != null) { const b = blobById(selBlob); return b ? {kind: 'b', objs: [b]} : null; }
@@ -838,6 +845,12 @@ function complementNodes(q) {
   nodes.forEach((n, m) => { const e = q.closed && m === N - 1 ? N - 1 : N - 2 - m; if (e >= 0 && q.nodes[e].s) n.s = q.nodes[e].s; });
   return nodes;
 }
+// a duplex is edited through the strand its complement was made from
+const primaryOf = qs => qs.find(q => !q.isComp) || qs[0];
+function syncPair(q) {  // keep a complement following the strand it belongs to
+  const y = q.pair != null && byId(q.pair);
+  if (y && y.isComp) { y.nodes = complementNodes(q); y.closed = q.closed; }
+}
 const selStrands = () => [...sel].map(byId).filter(Boolean).sort((a, b) => a.id - b.id);
 function toggleComplement() {
   const qs = selStrands().filter(q => q.nodes.length > 1);
@@ -849,7 +862,7 @@ function toggleComplement() {
     removeStrands([...rm]);
   } else for (const q of qs) {
     if (q.pair) continue;
-    const y = {id: nextId++, nodes: complementNodes(q), closed: q.closed, color: q.color, bases: q.bases, labels: q.labels, group: q.group, pair: q.id};
+    const y = {id: nextId++, nodes: complementNodes(q), closed: q.closed, color: q.color, bases: q.bases, labels: q.labels, group: q.group, pair: q.id, isComp: true};
     strands.splice(strands.indexOf(q) + 1, 0, y);
     zOrder.splice(Math.max(0, zOrder.indexOf('s:' + q.id)), 0, 's:' + y.id);
     q.pair = y.id;
@@ -1013,8 +1026,8 @@ function extendTarget(p) {
     return null;
   }
   const qs = selStrands();
-  if (qs.length === 1) {
-    const q = qs[0];
+  if (qs.length) {
+    const q = primaryOf(qs);
     if (strandNear(q, at)) {
       const Q = strandPoint(q, at);
       if (Q && !q.nodes.some(n => eq(n, Q))) return {kind: 'sinsert', id: q.id, at: Q};
@@ -1047,9 +1060,11 @@ function extendSelection(p) {
   } else if (t.kind === 'sinsert') {
     const q = byId(t.id), k = insertOnStrand(q, t.at);
     if (k >= 0) selNodes = new Set([ref(q.id, k)]);
+    syncPair(q);
   } else {
-    const q = selStrands()[0];
+    const q = primaryOf(selStrands());
     t.atStart ? q.nodes.unshift({i: t.at.i, j: t.at.j}) : q.nodes.push({i: t.at.i, j: t.at.j});
+    syncPair(q);
   }
   return true;
 }
@@ -1533,7 +1548,7 @@ function layerName(o, idx) {
 function layerColor(o) { return o.kind === 'm' ? '#e5e7eb' : o.obj.color; }
 const layerSelected = o => o.kind === 'm' ? selImport === o.id : o.kind === 'b' ? selBlob === o.id : sel.has(o.id);
 function buildLayers() {
-  const all = zList();
+  const all = zList().filter(o => !(o.kind === 's' && o.obj.isComp));  // a duplex is one row
   layersEl.style.display = layersOpen ? 'block' : 'none';
   document.getElementById('layersBtn').classList.toggle('on', layersOpen);
   if (!layersOpen) return;
@@ -1572,7 +1587,10 @@ layerList.addEventListener('dragend', () => {
   if (!layerDragKey) return;
   layerDragKey = null;
   pushHistory();
-  zOrder = [...layerList.children].map(x => x.dataset.k).reverse();  // the panel lists the top first
+  const visible = [...layerList.children].map(x => x.dataset.k).reverse();  // the panel lists the top first
+  const hidden = new Map();  // complements follow the strand they belong to
+  for (const q of strands) if (q.isComp && q.pair != null) hidden.set('s:' + q.pair, 's:' + q.id);
+  zOrder = visible.flatMap(k => hidden.has(k) ? [k, hidden.get(k)] : [k]);
   render();
 });
 
