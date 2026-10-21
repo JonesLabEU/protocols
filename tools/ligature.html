@@ -1,0 +1,1928 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ligature</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/svg.js/3.2.4/svg.min.js"></script>
+<style>
+:root{--bg:#fafafa;--fg:#1f2937;--accent:#1d4ed8;--btn:#374151;--panel:#fff;--border:#d1d5db}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font:13px system-ui,sans-serif;color:var(--fg);background:var(--bg);overflow:hidden}
+#canvas{position:fixed;inset:0}
+#canvas svg{display:block;touch-action:none;user-select:none}
+#bar{position:fixed;top:10px;left:10px;z-index:10;display:flex;gap:5px;align-items:center;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:5px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+button{font:inherit;border:1px solid var(--border);background:#fff;color:var(--fg);border-radius:6px;padding:4px 7px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+button:hover{background:#f3f4f6}
+button.on{background:var(--btn);border-color:var(--btn);color:#fff}
+button:disabled{opacity:.4;cursor:default}
+button svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+button svg text{stroke:none;fill:currentColor}
+.sep{width:1px;height:22px;background:var(--border);margin:0 2px}
+.hide{display:none}
+#swatch{width:28px;height:28px;padding:0;border-radius:6px}
+#pop{position:fixed;z-index:10;display:none;flex-direction:column;gap:5px;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px;box-shadow:0 2px 8px rgba(0,0,0,.1);width:238px}
+#pop .row{display:flex;flex-wrap:wrap;gap:4px}
+.sw{width:22px;height:22px;border-radius:5px;border:1px solid rgba(0,0,0,.12);cursor:pointer;padding:0}
+.sw.on{outline:2px solid var(--btn);outline-offset:1px}
+#exportMenu{position:fixed;z-index:10;display:none;flex-direction:column;gap:4px;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:6px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+#exportMenu button{justify-content:flex-start;padding:4px 10px}
+#layers{position:fixed;top:56px;right:10px;z-index:9;width:172px;max-height:calc(100vh - 20px);overflow-y:auto;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:5px;box-shadow:0 2px 8px rgba(0,0,0,.1);display:none}
+.layer{display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:5px;cursor:pointer;font-size:12px;white-space:nowrap;overflow:hidden}
+.layer:hover{background:#f3f4f6}
+.layer.sel{background:#eef2ff;box-shadow:inset 0 0 0 1px var(--btn)}
+.layer .grip{cursor:grab;color:#9ca3af;font-size:13px;line-height:1}
+.layer .nm{overflow:hidden;text-overflow:ellipsis}
+.layer .dot{width:10px;height:10px;border-radius:3px;flex:none;border:1px solid rgba(0,0,0,.15)}
+
+.plabel{font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em}
+#hexOut{font:11px ui-monospace,monospace;color:#6b7280;height:14px}
+#toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%);background:#111827;color:#fff;padding:6px 12px;border-radius:6px;opacity:0;transition:opacity .2s;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="canvas"></div>
+
+<div id="bar">
+  <button data-mode="select" title="Select">
+    <svg viewBox="0 0 24 24"><path d="M5 3.5 18.5 11l-6.2 1.6L9.8 19z"/></svg></button>
+  <button data-mode="na" title="Nucleic acid"></button>
+  <button data-mode="protein" title="Protein"></button>
+  <div class="sep"></div>
+  <button data-act="complement" title="Complementary strand"></button>
+  <button data-act="bases" title="Base ticks"></button>
+  <button data-act="labels" title="5′/3′ labels"></button>
+  <button id="swatch" title="Color"></button>
+  <div class="sep" id="sep2"></div>
+  <button id="undo" title="Undo"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5A5.5 5.5 0 0 1 20 14.5 5.5 5.5 0 0 1 14.5 20H11"/></svg></button>
+  <button id="redo" title="Redo"><svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5 5.5 5.5 0 0 0 9.5 20H13"/></svg></button>
+  <div class="sep"></div>
+  <button id="layersBtn" title="Arrange"><svg viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5z"/><path d="m3 13 9 5 9-5"/></svg></button>
+  <button id="upload" title="Import"><svg viewBox="0 0 24 24"><path d="M12 20V8"/><path d="m7 12.5 5-5 5 5"/><path d="M4 4h16"/></svg></button>
+  <button id="export" title="Export"><svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10.5 5 5 5-5"/><path d="M4 20h16"/></svg></button>
+  <input id="file" type="file" accept=".svg,.excalidraw,.json,image/svg+xml,application/json" style="display:none">
+</div>
+<div id="pop">
+  <div class="plabel">Colors</div><div class="row" id="baseRow"></div>
+  <div class="plabel">Shades</div><div class="row" id="shadeRow"></div>
+  <div id="hexOut"></div>
+</div>
+<div id="layers"><div id="layerList"></div></div>
+<div id="exportMenu">
+  <button data-ex="svg">Save SVG</button><button data-ex="png">Save PNG</button>
+  <button data-ex="exc">Save Excalidraw</button>
+  <button data-ex="csvg">Copy as SVG</button><button data-ex="cpng">Copy as PNG</button>
+  <button data-ex="cexc">Copy for Excalidraw</button>
+</div>
+<div id="toast"></div>
+
+<script>
+// ---------- constants & state ----------
+// S is the triangle edge used for physical sizes (duplex width, bp spacing). The snap lattice is a
+// triangular lattice of spacing s = S/2: triangle corners plus the midpoint of every edge joining them.
+const S = 40, TH = S * Math.sqrt(3) / 2, s = S / 2, hy = TH / 2;
+const DIRS = [[1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, -1], [-1, 2], [1, -2]];
+const HALO = '#93c5fd', ACC = '#1d4ed8';
+const OC = {
+  gray: ['#f8f9fa','#f1f3f5','#e9ecef','#dee2e6','#ced4da','#adb5bd','#868e96','#495057','#343a40','#212529'],
+  red: ['#fff5f5','#ffe3e3','#ffc9c9','#ffa8a8','#ff8787','#ff6b6b','#fa5252','#f03e3e','#e03131','#c92a2a'],
+  pink: ['#fff0f6','#ffdeeb','#fcc2d7','#faa2c1','#f783ac','#f06595','#e64980','#d6336c','#c2255c','#a61e4d'],
+  grape: ['#f8f0fc','#f3d9fa','#eebefa','#e599f7','#da77f2','#cc5de8','#be4bdb','#ae3ec9','#9c36b5','#862e9c'],
+  violet: ['#f3f0ff','#e5dbff','#d0bfff','#b197fc','#9775fa','#845ef7','#7950f2','#7048e8','#6741d9','#5f3dc4'],
+  indigo: ['#edf2ff','#dbe4ff','#bac8ff','#91a7ff','#748ffc','#5c7cfa','#4c6ef5','#4263eb','#3b5bdb','#364fc7'],
+  blue: ['#e7f5ff','#d0ebff','#a5d8ff','#74c0fc','#4dabf7','#339af0','#228be6','#1c7ed6','#1971c2','#1864ab'],
+  cyan: ['#e3fafc','#c5f6fa','#99e9f2','#66d9e8','#3bc9db','#22b8cf','#15aabf','#1098ad','#0c8599','#0b7285'],
+  teal: ['#e6fcf5','#c3fae8','#96f2d7','#63e6be','#38d9a9','#20c997','#12b886','#0ca678','#099268','#087f5b'],
+  green: ['#ebfbee','#d3f9d8','#b2f2bb','#8ce99a','#69db7c','#51cf66','#40c057','#37b24d','#2f9e44','#2b8a3e'],
+  yellow: ['#fff9db','#fff3bf','#ffec99','#ffe066','#ffd43b','#fcc419','#fab005','#f59f00','#f08c00','#e67700'],
+  orange: ['#fff4e6','#ffe8cc','#ffd8a8','#ffc078','#ffa94d','#ff922b','#fd7e14','#f76707','#e8590c','#d9480f'],
+};
+const SHADES = [2, 3, 5, 6, 7, 9], BLACK = '#1e1e1e';
+const DEFAULT_COLOR = OC.gray[7], BLOB_COLOR = OC.orange[2];  // the palest shade in the picker
+const cfg = {r: 12, w: 3.5, tw: 2, width: 0.6, bpPerEdge: 4, blobR: 52, corner: 14, cell: 3, edge: 3};
+
+let strands = [], nextId = 1, nextGid = 1;
+let blobs = [], nextBid = 1;
+let imports = [], nextImp = 1, selImport = null;
+let zOrder = [];  // stacking order, bottom first: 's:<id>' | 'b:<id>' | 'm:<id>'
+let sel = new Set(), selNodes = new Set(), drawing = null, pdraw = null, drag = null, lastDown = null;
+let selBlob = null, selBlobNode = null;
+let mode = 'select', altDown = false, curPt = null;
+let G = new Map(), BP = new Map();
+const undoStack = [], redoStack = [];
+const vb = {x: -320, y: -220, z: 1};
+
+// ---------- canvas ----------
+const host = document.getElementById('canvas');
+const draw = SVG().addTo(host).size('100%', '100%');
+const svgEl = draw.node;
+const pat = draw.pattern(2 * s, 4 * hy, add => {
+  for (let j = 0; j <= 4; j++) for (let i = -3; i <= 4; i++) {
+    const x = s * i + s / 2 * j, y = hy * j;
+    if (x < -0.01 || x > 2 * s + 0.01) continue;
+    const corner = (((i % 2) + 2) % 2 === 0) && j % 2 === 0;  // the rest are edge midpoints
+    add.circle(corner ? 3.2 : 2.2).center(x, y).fill(corner ? '#b6bcc6' : '#d4d8de');
+  }
+});
+draw.rect(400000, 400000).move(-200000, -200000).fill(pat);
+const gBlob = draw.group(), content = draw.group(), overlay = draw.group();
+
+function setVB() {
+  const r = host.getBoundingClientRect();
+  draw.viewbox(vb.x, vb.y, r.width / vb.z, r.height / vb.z);
+  render();
+}
+function zoomAt(z, cx, cy) {
+  const p = draw.point(cx, cy), r = host.getBoundingClientRect();
+  vb.z = Math.max(0.2, Math.min(8, z));
+  vb.x = p.x - (cx - r.left) / vb.z;
+  vb.y = p.y - (cy - r.top) / vb.z;
+  setVB();
+}
+
+// ---------- geometry ----------
+const W = n => ({x: s * n.i + s / 2 * n.j, y: hy * n.j});
+const eq = (a, b) => a.i === b.i && a.j === b.j;
+const f = v => +v.toFixed(2);
+const sub = (a, b) => ({x: a.x - b.x, y: a.y - b.y});
+const add = (a, b, k = 1) => ({x: a.x + b.x * k, y: a.y + b.y * k});
+const len = v => Math.hypot(v.x, v.y);
+const dot = (a, b) => a.x * b.x + a.y * b.y;
+const unit = v => { const l = len(v) || 1; return {x: v.x / l, y: v.y / l}; };
+const byId = id => strands.find(q => q.id === id);
+const blobById = id => blobs.find(b => b.id === id);
+const ref = (id, k) => id + ':' + k;
+const unref = r => r.split(':').map(Number);
+const hx = c => { const n = parseInt(c.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+const mix = (c, d, t) => '#' + hx(c).map((v, i) => Math.round(v + (hx(d)[i] - v) * t).toString(16).padStart(2, '0')).join('');
+
+function nearest(x, y) {
+  const j0 = Math.round(y / hy), i0 = Math.round((x - s / 2 * (y / hy)) / s);
+  let best = null, bd = Infinity;
+  for (let i = i0 - 1; i <= i0 + 1; i++) for (let j = j0 - 1; j <= j0 + 1; j++) {
+    const p = W({i, j}), d = (p.x - x) ** 2 + (p.y - y) ** 2;
+    if (d < bd) { bd = d; best = {i, j}; }
+  }
+  return best;
+}
+function step(a, b) {
+  const di = b.i - a.i, dj = b.j - a.j;
+  if (!(di || dj)) return null;
+  for (const [x, y] of DIRS) {
+    if (di * y !== dj * x) continue;
+    const n = x ? di / x : dj / y;
+    if (n > 0 && Number.isInteger(n)) return {i: x, j: y, n};
+  }
+  return null;
+}
+const sameDir = (a, b) => a && b && a.i === b.i && a.j === b.j;
+function route(a, b) {
+  if (eq(a, b)) return [a];
+  if (step(a, b)) return [a, b];
+  const flip = b.j < a.j || (b.j === a.j && b.i < a.i), p = flip ? b : a, q = flip ? a : b;
+  const ri = q.i - p.i, rj = q.j - p.j;
+  let best = null, bs = Infinity;
+  DIRS.forEach(([d1i, d1j], x) => DIRS.forEach(([d2i, d2j], y) => {
+    const det = d1i * d2j - d2i * d1j;
+    if (!det) return;
+    const t = (ri * d2j - d2i * rj) / det, u = (d1i * rj - d1j * ri) / det;
+    if (!(t > 0 && u > 0 && Number.isInteger(t) && Number.isInteger(u))) return;
+    const sc = t * len(W({i: d1i, j: d1j})) + u * len(W({i: d2i, j: d2j})) + x * 1e-5 + y * 1e-6;
+    if (sc < bs) { bs = sc; best = {i: p.i + t * d1i, j: p.j + t * d1j}; }
+  }));
+  return best ? [a, best, b] : [a, b];
+}
+function snapRay(a, p) {
+  const A = W(a);
+  let best = null, bd = Infinity;
+  for (const [di, dj] of DIRS) {
+    const u = W({i: di, j: dj}), k = Math.max(1, Math.round(dot(sub(p, A), u) / dot(u, u)));
+    const c = {i: a.i + k * di, j: a.j + k * dj}, C = W(c), d = (C.x - p.x) ** 2 + (C.y - p.y) ** 2;
+    if (d < bd) { bd = d; best = c; }
+  }
+  return best;
+}
+const halfWidth = () => cfg.width * S / 2;
+const loopR = () => halfWidth() * 2;
+function distSeg(p, a, b) {
+  const v = sub(b, a), l2 = dot(v, v);
+  const t = l2 ? Math.max(0, Math.min(1, dot(sub(p, a), v) / l2)) : 0;
+  return len(sub(p, add(a, v, t)));
+}
+function segDist2(px, py, a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy;
+  let t = l2 ? ((px - a.x) * dx + (py - a.y) * dy) / l2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  const ex = px - (a.x + t * dx), ey = py - (a.y + t * dy);
+  return {d2: ex * ex + ey * ey, t};
+}
+
+// ---------- strands ----------
+function centerline(q) {
+  const ns = q.nodes, N = ns.length, L = [], nodeV = [], segEdge = [];
+  ns.forEach((n, k) => {
+    if (k === 0) { L.push(n); nodeV.push(0); return; }
+    const r = route(ns[k - 1], n);
+    for (let m = 1; m < r.length; m++) if (!eq(r[m], L.at(-1))) { L.push(r[m]); segEdge.push(k - 1); }
+    nodeV.push(L.length - 1);
+  });
+  let closed = !!q.closed && N >= 3;
+  if (closed) {
+    const r = route(ns[N - 1], ns[0]);
+    for (let m = 1; m < r.length - 1; m++) if (!eq(r[m], L.at(-1))) { L.push(r[m]); segEdge.push(N - 1); }
+    if (L.length < 3) closed = false; else segEdge.push(N - 1);
+  }
+  const n = L.length, pts = L.map(W), nseg = closed ? n : Math.max(0, n - 1), segs = [];
+  for (let k = 0; k < nseg; k++) {
+    const A = pts[k], B = pts[(k + 1) % n], v = sub(B, A), l = len(v), u = {x: v.x / l, y: v.y / l};
+    segs.push({A, B, u, nl: {x: u.y, y: -u.x}, l, pref: ns[segEdge[k]].s || 0});
+  }
+  return {L, pts, nodeV, closed, nseg, segs, segEdge};
+}
+function computeSides(CL) {
+  const all = [], out = new Map();
+  for (const [id, c] of CL) { out.set(id, c.segs.map(q => q.pref || 1)); c.segs.forEach((q, k) => all.push({id, k, s: q})); }
+  const Dmax = 2.05 * TH;
+  for (const X of all) {
+    if (X.s.pref) continue;
+    let best = null, bd = Infinity;
+    for (const Y of all) {
+      if (Y === X || dot(X.s.u, Y.s.u) > -0.999) continue;
+      const delta = dot(sub(Y.s.A, X.s.A), X.s.nl), ad = Math.abs(delta);
+      if (ad > Dmax || ad >= bd) continue;
+      const t1 = dot(sub(Y.s.A, X.s.A), X.s.u), t2 = dot(sub(Y.s.B, X.s.A), X.s.u);
+      if (Math.min(Math.max(t1, t2), X.s.l) - Math.max(Math.min(t1, t2), 0) < S * 0.25) continue;
+      bd = ad; best = {delta, Y};
+    }
+    if (!best) continue;
+    out.get(X.id)[X.k] = Math.abs(best.delta) > 1e-6 ? (best.delta < 0 ? 1 : -1) : (best.Y.s.pref || 1);
+  }
+  return out;
+}
+function geom(q, c, sd) {
+  const {L, pts, nodeV, closed, nseg, segs} = c, n = L.length, d = halfWidth(), R = loopR(), h = d;
+  const offv = k => ({x: segs[k].nl.x * sd[k], y: segs[k].nl.y * sd[k]});
+  const segBefore = k => closed ? (k - 1 + n) % n : k - 1;
+  const segAfter = k => (closed || k < nseg) ? k : -1;
+  const pv = k => closed ? (k - 1 + n) % n : k - 1, nx = k => closed ? (k + 1) % n : k + 1;
+  const In = [], Out = [], kind = [], sweep = [];
+  for (let k = 0; k < n; k++) {
+    const P = pts[k], ia = segBefore(k), ib = segAfter(k), a = ia >= 0 ? segs[ia] : null, b = ib >= 0 ? segs[ib] : null;
+    if (!a && !b) { In.push(P); Out.push(P); kind.push('end'); continue; }
+    if (!a || !b) { const o = add(P, offv(a ? ia : ib), d); In.push(o); Out.push(o); kind.push('end'); continue; }
+    const na = offv(ia), nb = offv(ib);
+    if (dot(a.u, b.u) < -0.999) {
+      if (len(sub(na, nb)) < 1e-6) { const o = add(P, na, d); In.push(o); Out.push(o); kind.push('end'); }
+      else { In.push(add(P, na, d)); Out.push(add(P, nb, d)); kind.push('loop'); sweep[k] = dot(na, a.nl) > 0 ? 1 : 0; }
+    } else if (len(add(na, nb)) < 1e-6) {
+      In.push(add(add(P, na, d), a.u, -h)); Out.push(add(add(P, nb, d), b.u, h)); kind.push('switch');
+    } else {
+      const m = unit(add(na, nb)), o = add(P, m, d / dot(m, na));
+      In.push(o); Out.push(o); kind.push(dot(a.u, b.u) > 0.999 ? 'straight' : 'miter');
+    }
+  }
+  const rr = In.map((p, k) => kind[k] !== 'miter' ? 0 :
+    Math.min(cfg.r, len(sub(p, Out[pv(k)])) / 2, len(sub(In[nx(k)], p)) / 2));
+  const corner = k => {
+    const P = In[k], a = unit(sub(P, Out[pv(k)])), b = unit(sub(In[nx(k)], P));
+    return [add(P, a, -rr[k]), P, add(P, b, rr[k])];
+  };
+  const pt = p => `${f(p.x)} ${f(p.y)}`;
+  const loops = [];
+  const vertex = k => {
+    if (kind[k] === 'loop') {
+      loops.push({C: add(pts[k], segs[segBefore(k)].u, Math.sqrt(R * R - d * d)), R});
+      return ` L${pt(In[k])} A${f(R)} ${f(R)} 0 1 ${sweep[k]} ${pt(Out[k])}`;
+    }
+    if (kind[k] === 'switch') {
+      const a = segs[segBefore(k)].u, b = segs[segAfter(k)].u;
+      return ` L${pt(In[k])} C${pt(add(In[k], a, h))} ${pt(add(Out[k], b, -h))} ${pt(Out[k])}`;
+    }
+    if (rr[k] > 0) { const [p1, P, p2] = corner(k); return ` L${pt(p1)} Q${pt(P)} ${pt(p2)}`; }
+    return ` L${pt(In[k])}`;
+  };
+  let ds = '';
+  if (closed) {
+    ds = `M${pt(kind[0] === 'miter' && rr[0] > 0 ? corner(0)[2] : Out[0])}`;
+    for (let k = 1; k < n; k++) ds += vertex(k);
+    ds += vertex(0) + ' Z';
+  } else if (n) {
+    ds = `M${pt(Out[0])}`;
+    for (let k = 1; k < n - 1; k++) ds += vertex(k);
+    if (n > 1) ds += ` L${pt(In[n - 1])}`;
+  }
+  const ticks = [], sp = S / cfg.bpPerEdge;
+  if (q.bases !== false) segs.forEach((q2, k) => {
+    const k1 = (k + 1) % n, A = Out[k], Lo = dot(sub(In[k1], A), q2.u), nb = offv(k), run = [];
+    const lo = rr[k] * 0.5 - 0.01, hi = Lo - rr[k1] * 0.5 + 0.01;
+    for (let t = (((sp / 2 - dot(q2.A, q2.u)) % sp) + sp) % sp; t < q2.l - 1e-6; t += sp) {
+      const base = add(q2.A, q2.u, t), e = add(base, nb, d), sp2 = dot(sub(e, A), q2.u);
+      if (sp2 >= lo && sp2 <= hi) run.push([e, base]);
+    }
+    if (run.length > 1) ticks.push(...run);  // a single tick on its own reads as noise
+  });
+  let lab = null;
+  if (!closed && n > 1 && q.labels !== false) lab = {p5: add(Out[0], segs[0].u, -11), p3: add(In[n - 1], segs[nseg - 1].u, 11)};
+  return {L, pts, In, Out, nseg, closed, nodeV, segEdge: c.segEdge, segs, sd, d: ds, ticks, loops, lab};
+}
+function hitStrand(p0) {
+  const tol = 8 / vb.z;
+  for (let r = strands.length - 1; r >= 0; r--) {
+    const g = G.get(strands[r].id), p = toLocal(strands[r], p0);
+    if (!g) continue;
+    const n = g.In.length;
+    for (let k = 0; k < g.nseg; k++)
+      if (distSeg(p, g.Out[k], g.In[(k + 1) % n]) < tol || distSeg(p, g.pts[k], g.pts[(k + 1) % n]) < tol) return strands[r].id;
+    for (const c of g.loops) if (Math.abs(len(sub(p, c.C)) - c.R) < tol) return strands[r].id;
+    for (const [a, b] of g.ticks) if (distSeg(p, a, b) < tol / 2) return strands[r].id;
+  }
+  return null;
+}
+const handlePos = (q, k) => {
+  const g = G.get(q.id), v = g.nodeV[k + (drawing && drawing.atStart && drawing.preview && drawing.id === q.id ? 1 : 0)];
+  return g.pts[v];
+};
+const handleWorld = (q, k) => toWorld(q, handlePos(q, k));
+function hitHandle(p) {
+  let best = null, bd = 7 / vb.z;
+  for (const id of sel) {
+    const q = byId(id);
+    if (q) q.nodes.forEach((_, k) => {
+      const d = len(sub(p, handleWorld(q, k)));
+      if (d < bd) { bd = d; best = {id, k}; }
+    });
+  }
+  return best;
+}
+function edgeHandles(q) {
+  const g = G.get(q.id), best = new Map();
+  g.segEdge.forEach((e, k) => { if (k < g.nseg && (!best.has(e) || g.segs[k].l > g.segs[best.get(e)].l)) best.set(e, k); });
+  return [...best].map(([e, k]) => ({e, k, seg: g.segs[k], side: g.sd[k], pos: add(g.pts[k], g.segs[k].u, g.segs[k].l / 2)}));
+}
+function hitEdgeHandle(p) {
+  let best = null, bd = 7 / vb.z;
+  for (const id of sel) {
+    const q = byId(id);
+    if (q) for (const h of edgeHandles(q)) { const d = len(sub(p, toWorld(q, h.pos))); if (d < bd) { bd = d; best = {id, ...h}; } }
+  }
+  return best;
+}
+
+// ---------- blobs (protein) ----------
+function blobChains(b) {
+  const kids = id => b.nodes.filter(n => n.parent === id);
+  const out = [], stack = b.nodes.filter(n => n.parent == null).map(r => [r]);
+  while (stack.length) {
+    const pts = stack.pop();
+    let cur = pts.at(-1);
+    for (;;) {
+      const k = kids(cur.id);
+      if (k.length === 1) { pts.push(k[0]); cur = k[0]; }
+      else { for (const c of k) stack.push([cur, c]); break; }
+    }
+    if (pts.length > 1) out.push(pts);
+  }
+  return out;
+}
+function expandChain(pts) {
+  const L = [{...W(pts[0]), r: pts[0].r}];
+  for (let k = 1; k < pts.length; k++) {
+    const r = route(pts[k - 1], pts[k]), P = r.map(W), ls = [];
+    let tot = 0;
+    for (let m = 1; m < P.length; m++) { const l = len(sub(P[m], P[m - 1])); ls.push(l); tot += l; }
+    let acc = 0;
+    for (let m = 1; m < P.length; m++) {
+      acc += ls[m - 1];
+      L.push({...P[m], r: pts[k - 1].r + (pts[k].r - pts[k - 1].r) * (tot ? acc / tot : 1)});
+    }
+  }
+  return L;
+}
+function smoothPoly(P) {
+  if (P.length < 3) return P;
+  const out = [P[0]];
+  for (let k = 1; k < P.length - 1; k++) {
+    const a = P[k - 1], c = P[k], b = P[k + 1];
+    const u = unit(sub(a, c)), v = unit(sub(b, c));
+    if (dot(u, v) > 0.999) continue;
+    if (dot(u, v) < -0.999) { out.push(c); continue; }
+    const R = Math.min(cfg.corner, len(sub(a, c)) / 2, len(sub(b, c)) / 2), N = 8;
+    const p1 = add(c, u, R), p2 = add(c, v, R);
+    for (let t = 0; t <= N; t++) {
+      const m = t / N;
+      const q1 = add(p1, sub(c, p1), m), q2 = add(c, sub(p2, c), m);
+      const q = add(q1, sub(q2, q1), m);
+      q.r = c.r;
+      out.push(q);
+    }
+  }
+  out.push(P.at(-1));
+  return out;
+}
+function blobSegs(b) {
+  const out = [], spine = [];
+  if (b.nodes.length === 1) {
+    const P = W(b.nodes[0]);
+    return {segs: [{a: P, b: P, r0: b.nodes[0].r, r1: b.nodes[0].r}], spine};
+  }
+  for (const ch of blobChains(b)) {
+    const P = smoothPoly(expandChain(ch));
+    spine.push(P);
+    for (let k = 1; k < P.length; k++) out.push({a: P[k - 1], b: P[k], r0: P[k - 1].r, r1: P[k].r});
+  }
+  return {segs: out, spine};
+}
+function rotPt(p, c, deg) {
+  if (!deg) return p;
+  const a = deg * Math.PI / 180, dx = p.x - c.x, dy = p.y - c.y;
+  return {x: c.x + dx * Math.cos(a) - dy * Math.sin(a), y: c.y + dx * Math.sin(a) + dy * Math.cos(a)};
+}
+function blobPivot(b) {  // also used for strands: both carry nodes
+  if (b.rc) return W(b.rc);
+  let x = 0, y = 0;
+  for (const n of b.nodes) { const P = W(n); x += P.x; y += P.y; }
+  return {x: x / b.nodes.length, y: y / b.nodes.length};
+}
+const toLocal = (b, p) => b && b.rot ? rotPt(p, blobPivot(b), -b.rot) : p;
+const toWorld = (b, p) => b && b.rot ? rotPt(p, blobPivot(b), b.rot) : p;
+const spin = (el, o) => { if (o && o.rot) { const c = blobPivot(o); el.rotate(o.rot, c.x, c.y); } return el; };
+const smin = (a, b, k) => { const h = Math.max(k - Math.abs(a - b), 0) / k; return Math.min(a, b) - h * h * k * 0.25; };
+function blobSDF(x, y, segs) {
+  let d = 1e9;
+  for (const q of segs) {
+    const sd = segDist2(x, y, q.a, q.b);
+    d = smin(d, Math.sqrt(sd.d2) - (q.r0 + (q.r1 - q.r0) * sd.t), 9);
+  }
+  return d;
+}
+function blobBox(segs) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const q of segs) {
+    const m = Math.max(q.r0, q.r1) + 14;
+    x0 = Math.min(x0, q.a.x - m, q.b.x - m); y0 = Math.min(y0, q.a.y - m, q.b.y - m);
+    x1 = Math.max(x1, q.a.x + m, q.b.x + m); y1 = Math.max(y1, q.a.y + m, q.b.y + m);
+  }
+  return {x0, y0, x1, y1};
+}
+function sdfGrid(segs, box, st) {
+  const cols = Math.ceil((box.x1 - box.x0) / st), rows = Math.ceil((box.y1 - box.y0) / st);
+  const grid = new Float64Array((cols + 1) * (rows + 1));
+  for (let r = 0; r <= rows; r++) for (let c = 0; c <= cols; c++)
+    grid[r * (cols + 1) + c] = blobSDF(box.x0 + c * st, box.y0 + r * st, segs);
+  return {grid, cols, rows};
+}
+// contour where the distance field equals iso; iso < 0 gives a shape strictly inside the body
+function marching(gr, box, st, iso) {
+  const out = [], {cols, rows} = gr;
+  const grid = new Float64Array(gr.grid.length);
+  for (let i = 0; i < grid.length; i++) grid[i] = iso - gr.grid[i];
+  const ip = (x1, y1, v1, x2, y2, v2) => { const t = -v1 / (v2 - v1); return [x1 + t * (x2 - x1), y1 + t * (y2 - y1)]; };
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const x = box.x0 + c * st, y = box.y0 + r * st;
+    const cp = [[x, y], [x + st, y], [x + st, y + st], [x, y + st]];
+    const v = [grid[r * (cols + 1) + c], grid[r * (cols + 1) + c + 1], grid[(r + 1) * (cols + 1) + c + 1], grid[(r + 1) * (cols + 1) + c]];
+    let idx = 0;
+    v.forEach((vv, i) => { if (vv > 0) idx |= (1 << i); });
+    if (!idx || idx === 15) continue;
+    const E = (i, j) => ip(cp[i][0], cp[i][1], v[i], cp[j][0], cp[j][1], v[j]), ad = (p, q) => out.push([p, q]);
+    switch (idx) {
+      case 1: case 14: ad(E(0,1), E(0,3)); break;
+      case 2: case 13: ad(E(0,1), E(1,2)); break;
+      case 3: case 12: ad(E(0,3), E(1,2)); break;
+      case 4: case 11: ad(E(1,2), E(2,3)); break;
+      case 5: ad(E(0,1), E(0,3)); ad(E(1,2), E(2,3)); break;
+      case 6: case 9: ad(E(0,1), E(2,3)); break;
+      case 7: case 8: ad(E(0,3), E(2,3)); break;
+      case 10: ad(E(0,1), E(1,2)); ad(E(0,3), E(2,3)); break;
+    }
+  }
+  const key = p => p[0].toFixed(2) + ',' + p[1].toFixed(2);
+  const used = new Array(out.length).fill(false), map = {};
+  out.forEach((q, i) => { (map[key(q[0])] = map[key(q[0])] || []).push(i); (map[key(q[1])] = map[key(q[1])] || []).push(i); });
+  const loops = [];
+  for (let i = 0; i < out.length; i++) {
+    if (used[i]) continue;
+    used[i] = true;
+    const loop = [out[i][0], out[i][1]];
+    let cur = out[i][1];
+    for (let g = 0; g < 100000; g++) {
+      const cand = (map[key(cur)] || []).filter(j => !used[j]);
+      if (!cand.length) break;
+      const j = cand[0];
+      used[j] = true;
+      const q = out[j], nxt = key(q[0]) === key(cur) ? q[1] : q[0];
+      loop.push(nxt); cur = nxt;
+      if (key(cur) === key(loop[0])) break;
+    }
+    if (loop.length > 10) loops.push(loop);
+  }
+  return loops;
+}
+function resample(loop, spacing) {
+  const pts = loop.map(p => ({x: p[0], y: p[1]}));
+  const out = [pts[0]];
+  let acc = 0;
+  for (let i = 1; i < pts.length; i++) {
+    let seg = len(sub(pts[i], pts[i - 1])), prev = pts[i - 1];
+    while (acc + seg >= spacing) {
+      const t = (spacing - acc) / seg;
+      const q = {x: prev.x + (pts[i].x - prev.x) * t, y: prev.y + (pts[i].y - prev.y) * t};
+      out.push(q); prev = q; seg = len(sub(pts[i], prev)); acc = 0;
+    }
+    acc += seg;
+  }
+  return out;
+}
+function catmull(pts) {
+  const n = pts.length;
+  if (n < 3) return '';
+  let d = `M${f(pts[0].x)},${f(pts[0].y)} `;
+  for (let i = 0; i < n; i++) {
+    const p0 = pts[(i - 1 + n) % n], p1 = pts[i], p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n];
+    const c1 = {x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6};
+    const c2 = {x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6};
+    d += `C${f(c1.x)},${f(c1.y)} ${f(c2.x)},${f(c2.y)} ${f(p2.x)},${f(p2.y)} `;
+  }
+  return d + 'Z';
+}
+function blobPath(b) {
+  const {segs, spine} = blobSegs(b);
+  if (!segs.length) return {d: '', dIn: '', segs, spine, box: null, outline: []};
+  const box = blobBox(segs);
+  const st = Math.max(cfg.cell, Math.max(box.x1 - box.x0, box.y1 - box.y0) / 300);
+  const gr = sdfGrid(segs, box, st), sp = Math.max(4, st * 2);
+  const loops = marching(gr, box, st, 0).map(l => resample(l, sp));
+  const inner = marching(gr, box, st, -INSET.w).map(l => resample(l, sp));
+  return {d: loops.map(catmull).join(' '), dIn: inner.map(catmull).join(' '), segs, spine, box, outline: loops, inner};
+}
+// flat two-tone: a darker silhouette, with the body color as a shape eroded inward and nudged
+// up-left, so the lighter region sits strictly inside and the rim is widest at the bottom right.
+const blobRim = c => mix(c, '#000000', .17);
+const INSET = {w: 8, dx: -4, dy: -4};
+function hitBlob(p) {
+  for (let k = blobs.length - 1; k >= 0; k--) {
+    const b = blobs[k], g = BP.get(b.id), q = toLocal(b, p);
+    if (g && g.segs.length && blobSDF(q.x, q.y, g.segs) < 3) return b.id;
+  }
+  return null;
+}
+function hitBlobNode(p) {
+  const b = blobById(selBlob);
+  if (!b) return null;
+  const q = toLocal(b, p);
+  let best = null, bd = 9 / vb.z;
+  for (const n of b.nodes) { const d = len(sub(q, W(n))); if (d < bd) { bd = d; best = n.id; } }
+  return best;
+}
+function hitBlobRing(p) {
+  const b = blobById(selBlob);
+  if (!b) return null;
+  const q = toLocal(b, p);
+  let best = null, bd = 8 / vb.z;
+  for (const n of b.nodes) { const d = Math.abs(len(sub(q, W(n))) - n.r); if (d < bd) { bd = d; best = n.id; } }
+  return best;
+}
+function blobDeleteNode(b, nid) {
+  const n = b.nodes.find(q => q.id === nid);
+  if (!n) return;
+  if (n.parent == null && b.nodes.filter(q => q.parent === nid).length > 1) return;
+  for (const c of b.nodes) if (c.parent === nid) c.parent = n.parent;
+  b.nodes = b.nodes.filter(q => q.id !== nid);
+  selBlobNode = n.parent != null ? n.parent : (b.nodes[0] || {}).id ?? null;
+  if (!b.nodes.length) { blobs = blobs.filter(x => x !== b); selBlob = null; selBlobNode = null; }
+}
+
+// ---------- stacking, selection geometry, lattice rotation ----------
+function zList() {  // every object, bottom first
+  const live = new Map();
+  for (const m of imports) live.set('m:' + m.id, {kind: 'm', id: m.id, obj: m});
+  for (const b of blobs) live.set('b:' + b.id, {kind: 'b', id: b.id, obj: b});
+  for (const q of strands) live.set('s:' + q.id, {kind: 's', id: q.id, obj: q});
+  const out = [];
+  for (const k of zOrder) if (live.has(k)) { out.push(live.get(k)); live.delete(k); }
+  for (const v of live.values()) out.push(v);
+  zOrder = out.map(o => o.kind + ':' + o.id);
+  return out;
+}
+const zAdd = k => { if (!zOrder.includes(k)) zOrder.push(k); };
+function selObj() {
+  if (selImport != null) { const m = imports.find(x => x.id === selImport); return m ? {kind: 'm', objs: [m]} : null; }
+  if (selBlob != null) { const b = blobById(selBlob); return b ? {kind: 'b', objs: [b]} : null; }
+  const qs = selStrands();
+  return qs.length ? {kind: 's', objs: qs} : null;
+}
+const boxOf = pts => {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const p of pts) { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y); }
+  return isFinite(x0) ? {x: x0, y: y0, w: x1 - x0, h: y1 - y0} : null;
+};
+// the object's own, unrotated box; the frame is then turned with it
+function localBox(o) {
+  if (o.kind === 'm') { const m = o.objs[0]; return {x: m.x, y: m.y, w: m.w, h: m.h}; }
+  const pts = [];
+  if (o.kind === 'b') { const g = BP.get(o.objs[0].id); for (const loop of (g && g.outline) || []) pts.push(...loop); }
+  else for (const q of o.objs) { const g = G.get(q.id); if (g) pts.push(...g.pts, ...g.In, ...g.Out); }
+  return boxOf(pts);
+}
+function selFrame() {
+  const o = selObj();
+  if (!o || drawing || pdraw) return null;
+  const lb = localBox(o);
+  if (!lb) return null;
+  const m = o.objs[0];
+  const rot = m.rot || 0;
+  const piv = o.kind === 'm' ? {x: m.x + m.w / 2, y: m.y + m.h / 2} : blobPivot(m);
+  return {o, lb, rot, piv, wpt: p => rotPt(p, piv, rot)};
+}
+const selBox = () => { const fr = selFrame(); return fr && fr.lb; };
+const boxCenter = b => ({x: b.x + b.w / 2, y: b.y + b.h / 2});
+const boxCorners = b => [{x: b.x, y: b.y}, {x: b.x + b.w, y: b.y}, {x: b.x + b.w, y: b.y + b.h}, {x: b.x, y: b.y + b.h}];
+function mainAxis(o) {  // along the strand, so its handle comes off the side
+  if (o && o.kind === 's' && o.objs[0].nodes.length > 1) {
+    const q = o.objs[0], A = W(q.nodes[0]), B = W(q.nodes.at(-1));
+    if (len(sub(B, A)) > 1) return unit(sub(B, A));
+  }
+  return {x: 1, y: 0};
+}
+function rotHandleLocal(fr) {
+  const c = boxCenter(fr.lb), u = mainAxis(fr.o), nl = {x: u.y, y: -u.x};  // perpendicular to that axis
+  const reach = Math.abs(nl.x) * fr.lb.w / 2 + Math.abs(nl.y) * fr.lb.h / 2 + 26 / vb.z;
+  return add(c, nl, reach);
+}
+const rotHandlePos = fr => fr.wpt(rotHandleLocal(fr));
+// 60 degrees on this lattice: (i,j) -> (-j, i+j), which keeps every point on the grid
+function rotLattice(n, c, steps) {
+  let i = n.i - c.i, j = n.j - c.j;
+  for (let k = ((steps % 6) + 6) % 6; k > 0; k--) { const ni = -j, nj = i + j; i = ni; j = nj; }
+  return {i: c.i + i, j: c.j + j};
+}
+function latCenter(nodes) {
+  let x = 0, y = 0;
+  for (const n of nodes) { const P = W(n); x += P.x; y += P.y; }
+  return nearest(x / nodes.length, y / nodes.length);
+}
+
+// ---------- bounds / linking ----------
+function bounds(ids, bids, mids) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  const take = p => { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y); };
+  for (const id of ids || []) {
+    const g = G.get(id), q = byId(id);
+    if (!g) continue;
+    const w = p => take(toWorld(q, p));
+    [...g.pts, ...g.In, ...g.Out].forEach(w);
+    g.loops.forEach(c => { w({x: c.C.x - c.R, y: c.C.y - c.R}); w({x: c.C.x + c.R, y: c.C.y + c.R}); });
+    if (g.lab) { w(add(g.lab.p5, {x: 8, y: 8})); w(add(g.lab.p5, {x: -8, y: -8})); w(add(g.lab.p3, {x: 8, y: 8})); w(add(g.lab.p3, {x: -8, y: -8})); }
+  }
+  for (const id of bids || []) {
+    const g = BP.get(id), b = blobById(id);
+    if (!g || !g.outline.length) continue;
+    const c = b ? blobPivot(b) : null, rot = (b && b.rot) || 0;
+    for (const loop of g.outline) for (const p of loop) take(rot ? rotPt(p, c, rot) : p);
+  }
+  for (const m of mids || []) { take({x: m.x, y: m.y}); take({x: m.x + m.w, y: m.y + m.h}); }
+  return {x: x0, y: y0, w: x1 - x0, h: y1 - y0};
+}
+function linked(q) {
+  const set = new Set([q.id]);
+  if (q.pair) set.add(q.pair);
+  for (const r of strands) if (q.group && r.group === q.group) set.add(r.id);
+  return [...set].map(byId).filter(Boolean);
+}
+const unitIds = id => linked(byId(id)).map(q => q.id);
+
+// ---------- history ----------
+const snap = () => JSON.stringify({strands, blobs, imports, zOrder, nextId, nextGid, nextBid, nextImp});
+function restore(st) {
+  ({strands, blobs, imports, zOrder, nextId, nextGid, nextBid, nextImp} = JSON.parse(st));
+  sel = new Set([...sel].filter(byId));
+  selNodes.clear();
+  if (!blobById(selBlob)) { selBlob = null; selBlobNode = null; }
+  if (!imports.some(m => m.id === selImport)) selImport = null;
+}
+function pushHistory() { undoStack.push(snap()); if (undoStack.length > 300) undoStack.shift(); redoStack.length = 0; }
+function undo() { if (drawing) finishDraw(); pdraw = null; if (!undoStack.length) return; redoStack.push(snap()); restore(undoStack.pop()); render(); }
+function redo() { if (!redoStack.length) return; undoStack.push(snap()); restore(redoStack.pop()); render(); }
+
+// ---------- rendering ----------
+function label(parent, text, p, color) {
+  return parent.plain(text).font({size: 11, family: 'system-ui, sans-serif', weight: 600, anchor: 'middle'})
+    .attr({x: f(p.x), y: f(p.y), 'dominant-baseline': 'central'}).fill(color);
+}
+function render() {
+  const view = strands.map(q => {
+    if (!(drawing && drawing.id === q.id && drawing.preview)) return q;
+    const pv = {i: drawing.preview.i, j: drawing.preview.j};
+    return drawing.atStart ? {...q, nodes: [{...pv, s: drawing.side}, ...q.nodes]}
+      : {...q, nodes: [...q.nodes.slice(0, -1), {...q.nodes.at(-1), s: drawing.side}, pv]};
+  });
+  const CL = new Map(view.map(q => [q.id, centerline(q)])), SD = computeSides(CL);
+  G = new Map(view.map(q => [q.id, geom(q, CL.get(q.id), SD.get(q.id))]));
+  const vBlobs = blobs.map(b => {  // the node under the cursor is part of the shape while drawing
+    if (!(pdraw && pdraw.bid === b.id && pdraw.preview)) return b;
+    const a = b.nodes.find(n => n.id === pdraw.nid);
+    return {...b, nodes: [...b.nodes, {id: -1, i: pdraw.preview.i, j: pdraw.preview.j, r: a ? a.r : cfg.blobR, parent: pdraw.nid}]};
+  });
+  BP = new Map(vBlobs.map(b => [b.id, blobPath(b)]));
+  gBlob.clear(); content.clear(); overlay.clear();
+  const hz = 1 / vb.z, shownGroups = new Set();
+
+  const vb2 = new Map(vBlobs.map(b => [b.id, b]));
+  for (const o of zList()) {  // one pass, in stacking order
+    if (o.kind === 'm') {
+      const m = o.obj, im = content.image(m.src).size(m.w, m.h).move(m.x, m.y);
+      if (m.rot) im.rotate(m.rot, m.x + m.w / 2, m.y + m.h / 2);
+    } else if (o.kind === 'b') {
+      const b = vb2.get(o.id), g = BP.get(o.id);
+      if (!g || !g.d) continue;
+      const gp = content.group();
+      gp.path(g.d).fill(blobRim(b.color)).stroke('none');
+      if (g.dIn) gp.path(g.dIn).fill(b.color).stroke('none').translate(INSET.dx, INSET.dy);
+      if (o.obj.rot) { const c = blobPivot(o.obj); gp.rotate(o.obj.rot, c.x, c.y); }
+    } else {
+      const q = o.obj, g = G.get(q.id);
+      if (!g) continue;
+      const gp = content.group();
+      for (const [a, c] of g.ticks) gp.line(f(a.x), f(a.y), f(c.x), f(c.y)).stroke({color: q.color, width: cfg.tw});
+      gp.path(g.d).fill('none').stroke({color: q.color, width: cfg.w, linecap: 'round', linejoin: 'round'});
+      if (g.lab && !(drawing && drawing.id === q.id)) { label(gp, '5′', g.lab.p5, q.color); label(gp, '3′', g.lab.p3, q.color); }
+      spin(gp, q);
+    }
+  }
+  // medial axis and radii, only for the selected protein (or the one being drawn)
+  for (const b of vBlobs) {
+    if (!(b.id === selBlob || (pdraw && pdraw.bid === b.id))) continue;
+    const real = blobById(b.id), g = BP.get(b.id), og = overlay.group();
+    for (const sp of (g && g.spine) || [])  // the smoothed spine of the shape itself
+      og.polyline(sp.map(q => [q.x, q.y])).fill('none').stroke({color: ACC, width: 1.4 * hz, opacity: .8, linecap: 'round'});
+    for (const n of b.nodes) {
+      const P = W(n);
+      og.circle(2 * n.r).center(P.x, P.y).fill('none').stroke({color: ACC, width: hz, opacity: .45});
+    }
+    if (!pdraw && b.id === selBlob) for (const n of b.nodes) {
+      const P = W(n), on = n.id === selBlobNode;
+      og.circle(9 * hz).center(P.x, P.y).fill(on ? ACC : '#fff').stroke({color: ACC, width: 1.5 * hz});
+    }
+    if (pdraw && pdraw.bid === b.id) {
+      const a = b.nodes.find(n => n.id === pdraw.nid);
+      if (a) { const A = W(a); og.circle(9 * hz).center(A.x, A.y).fill(ACC); }
+      if (pdraw.preview) { const Q = W(pdraw.preview); og.circle(8 * hz).center(Q.x, Q.y).fill('#fff').stroke({color: ACC, width: 1.5 * hz}); }
+    }
+    if (real && real.rot) { const c = blobPivot(real); og.rotate(real.rot, c.x, c.y); }
+  }
+  for (const id of sel) {
+    const q = byId(id);
+    if (!q) continue;
+    const ov = overlay.group();
+    ov.polyline(G.get(id).pts.concat(q.closed ? [G.get(id).pts[0]] : []).map(p => [p.x, p.y])).fill('none')
+      .stroke({color: ACC, width: 1.3 * hz, opacity: .7});
+    if (!drawing) for (const h of edgeHandles(q)) {
+      const r = 4.5 * hz, P = h.pos, sd = {x: h.seg.nl.x * h.side, y: h.seg.nl.y * h.side};
+      ov.polygon([[P.x - r, P.y], [P.x, P.y - r], [P.x + r, P.y], [P.x, P.y + r]]).fill('#fff').stroke({color: ACC, width: 1.2 * hz});
+      const t = add(P, sd, 6 * hz);
+      ov.line(P.x, P.y, t.x, t.y).stroke({color: ACC, width: 1.2 * hz});
+    }
+    q.nodes.forEach((_, k) => {
+      const p = handlePos(q, k), on = selNodes.has(ref(id, k));
+      ov.circle(9 * hz).center(p.x, p.y).fill(on ? ACC : '#fff').stroke({color: ACC, width: 1.5 * hz});
+    });
+    spin(ov, q);
+    if (q.group && !shownGroups.has(q.group)) {
+      shownGroups.add(q.group);
+      const bb = bounds(strands.filter(r => r.group === q.group).map(r => r.id)), pad = 10 * hz;
+      overlay.rect(bb.w + 2 * pad, bb.h + 2 * pad).move(bb.x - pad, bb.y - pad).fill('none')
+        .stroke({color: ACC, width: hz, dasharray: `${6 * hz} ${4 * hz}`});
+    }
+  }
+  if (drawing && drawing.preview) {
+    const g = G.get(drawing.id), e = drawing.atStart ? g.Out[0] : g.In.at(-1);
+    overlay.circle(8 * hz).center(e.x, e.y).fill(ACC);
+  }
+  const ex = extendTarget();  // holding Option: a plus marks the node the next click would add
+  if (ex && !drag) {
+    const P = W(ex.at), r = 7 * hz;
+    overlay.circle(9 * hz).center(P.x, P.y).fill('#fff').stroke({color: ACC, width: 1.5 * hz});
+    const bx = P.x + 13 * hz, by = P.y - 13 * hz;
+    overlay.circle(2 * r).center(bx, by).fill(ACC);
+    overlay.line(bx - r * .55, by, bx + r * .55, by).stroke({color: '#fff', width: 1.6 * hz, linecap: 'round'});
+    overlay.line(bx, by - r * .55, bx, by + r * .55).stroke({color: '#fff', width: 1.6 * hz, linecap: 'round'});
+  }
+  const fr = selFrame();
+  if (fr) {
+    const fg = overlay.group(), C = boxCenter(fr.lb), R = rotHandleLocal(fr), r = 7 * hz;
+    fg.line(C.x, C.y, R.x, R.y).stroke({color: ACC, width: hz, opacity: .35});
+    fg.circle(2 * r).center(R.x, R.y).fill('#fff').stroke({color: ACC, width: 1.4 * hz});
+    const a = 4.2 * hz;  // a small circular arrow
+    fg.path(`M${f(R.x - a)},${f(R.y)} A${f(a)} ${f(a)} 0 1 1 ${f(R.x)},${f(R.y + a)}`)
+      .fill('none').stroke({color: ACC, width: 1.4 * hz, linecap: 'round'});
+    fg.polygon([[R.x - a - 2.2 * hz, R.y + 1.2 * hz], [R.x - a + 2.2 * hz, R.y + 1.2 * hz], [R.x - a, R.y - 2.6 * hz]]).fill(ACC);
+    if (fr.o.kind !== 's') {
+      fg.rect(fr.lb.w, fr.lb.h).move(fr.lb.x, fr.lb.y).fill('none')
+        .stroke({color: ACC, width: hz, dasharray: `${4 * hz} ${3 * hz}`, opacity: .5});
+      for (const c of boxCorners(fr.lb))
+        fg.rect(8 * hz, 8 * hz).center(c.x, c.y).fill('#fff').stroke({color: ACC, width: 1.4 * hz});
+    }
+    if (fr.rot) fg.rotate(fr.rot, fr.piv.x, fr.piv.y);
+  }
+  if (drag && drag.type === 'marquee' && drag.r) {
+    const r = drag.r;
+    overlay.rect(r.w, r.h).move(r.x, r.y).fill({color: ACC, opacity: .06}).stroke({color: ACC, width: hz, dasharray: `${4 * hz} ${3 * hz}`});
+  }
+  syncBar();
+  buildLayers();
+}
+
+// ---------- editing ops ----------
+function complementNodes(q) {
+  const N = q.nodes.length, nodes = q.nodes.map(n => ({i: n.i, j: n.j})).reverse();
+  nodes.forEach((n, m) => { const e = q.closed && m === N - 1 ? N - 1 : N - 2 - m; if (e >= 0 && q.nodes[e].s) n.s = q.nodes[e].s; });
+  return nodes;
+}
+const selStrands = () => [...sel].map(byId).filter(Boolean).sort((a, b) => a.id - b.id);
+function toggleComplement() {
+  const qs = selStrands().filter(q => q.nodes.length > 1);
+  if (!qs.length) return;
+  pushHistory();
+  if (qs.every(q => q.pair)) {
+    const rm = new Set();
+    for (const q of qs) if (!rm.has(q.id) && q.pair) rm.add(q.pair);
+    removeStrands([...rm]);
+  } else for (const q of qs) {
+    if (q.pair) continue;
+    const y = {id: nextId++, nodes: complementNodes(q), closed: q.closed, color: q.color, bases: q.bases, labels: q.labels, group: q.group, pair: q.id};
+    strands.splice(strands.indexOf(q) + 1, 0, y);
+    zOrder.splice(Math.max(0, zOrder.indexOf('s:' + q.id)), 0, 's:' + y.id);
+    q.pair = y.id;
+    sel.add(y.id);
+  }
+}
+function removeStrands(ids) {
+  const set = new Set(ids);
+  strands = strands.filter(q => !set.has(q.id));
+  for (const q of strands) if (q.pair && !byId(q.pair)) q.pair = null;
+  for (const q of strands) if (q.group && strands.filter(r => r.group === q.group).length < 2) q.group = null;
+  ids.forEach(id => sel.delete(id));
+}
+function cleanup() {
+  let changed = false;
+  for (const q of strands) {
+    const n = q.nodes.filter((p, k) => k === 0 || !eq(p, q.nodes[k - 1]));
+    if (q.closed && n.length > 1 && eq(n[0], n.at(-1))) n.pop();
+    if (n.length !== q.nodes.length) { q.nodes = n; changed = true; }
+    if (q.closed && n.length < 3) q.closed = false;
+  }
+  const dead = strands.filter(q => q.nodes.length < 2 && !(drawing && drawing.id === q.id)).map(q => q.id);
+  if (dead.length) { removeStrands(dead); changed = true; }
+  if (changed) selNodes.clear();
+}
+function delSel() {
+  if (selImport != null) {
+    pushHistory();
+    imports = imports.filter(m => m.id !== selImport);
+    selImport = null;
+    return;
+  }
+  if (selBlob != null) {
+    pushHistory();
+    const b = blobById(selBlob);
+    if (selBlobNode != null && b.nodes.length > 1) blobDeleteNode(b, selBlobNode);
+    else { blobs = blobs.filter(x => x.id !== selBlob); selBlob = null; selBlobNode = null; }
+    return;
+  }
+  if (!sel.size) return;
+  pushHistory();
+  removeStrands([...sel]);
+  selNodes.clear();
+}
+function delNodes() {
+  if (!selNodes.size) return;
+  pushHistory();
+  const by = new Map();
+  for (const r of selNodes) { const [id, k] = unref(r); (by.get(id) || by.set(id, new Set()).get(id)).add(k); }
+  for (const [id, ks] of by) { const q = byId(id); if (q) q.nodes = q.nodes.filter((_, k) => !ks.has(k)); }
+  selNodes.clear();
+  cleanup();
+}
+const between = (P, a, b) => { const x = step(a, b), t = step(a, P); return sameDir(x, t) && t.n < x.n; };
+function insertOnStrand(q, P) {
+  const k0 = q.nodes.findIndex(n => eq(n, P));
+  if (k0 >= 0) return k0;
+  const N = q.nodes.length, ne = q.closed ? N : N - 1;
+  for (let e = 0; e < ne; e++) {
+    const r = route(q.nodes[e], q.nodes[(e + 1) % N]);
+    let ins = null;
+    if (r.length === 2 && between(P, r[0], r[1])) ins = [P];
+    else if (r.length === 3) {
+      if (eq(P, r[1])) ins = [P];
+      else if (between(P, r[0], r[1])) ins = [P, r[1]];
+      else if (between(P, r[1], r[2])) ins = [r[1], P];
+    }
+    if (ins) {
+      q.nodes.splice(e + 1, 0, ...ins.map(n => ({i: n.i, j: n.j, s: q.nodes[e].s})));
+      return e + 1 + ins.findIndex(n => eq(n, P));
+    }
+  }
+  return -1;
+}
+function insertNode(id, p0) {
+  const q = byId(id), g = G.get(id), n = g.L.length, p = toLocal(q, p0);
+  let k0 = -1, bd = Infinity;
+  for (let k = 0; k < g.nseg; k++) {
+    const d = distSeg(p, g.Out[k], g.In[(k + 1) % n]);
+    if (d < bd) { bd = d; k0 = k; }
+  }
+  if (k0 < 0) return;
+  const a = g.L[k0], st = step(a, g.L[(k0 + 1) % n]), uv = W({i: st.i, j: st.j});
+  const t = Math.max(0, Math.min(st.n, Math.round(dot(sub(p, g.pts[k0]), uv) / dot(uv, uv))));
+  const P = {i: a.i + t * st.i, j: a.j + t * st.j};
+  pushHistory();
+  const k = insertOnStrand(q, P);
+  if (undoStack.at(-1) === snap()) undoStack.pop();
+  if (k >= 0) { sel.add(id); selNodes = new Set([ref(id, k)]); }
+  render();
+}
+// the lattice point on a strand's routed path nearest p
+function strandPoint(q, p0) {
+  const g = G.get(q.id), p = toLocal(q, p0);
+  if (!g) return null;
+  const n = g.L.length;
+  let k0 = -1, bd = Infinity;
+  for (let k = 0; k < g.nseg; k++) {
+    const d = distSeg(p, g.Out[k], g.In[(k + 1) % n]);
+    if (d < bd) { bd = d; k0 = k; }
+  }
+  if (k0 < 0) return null;
+  const a = g.L[k0], st = step(a, g.L[(k0 + 1) % n]);
+  if (!st) return null;
+  const uv = W({i: st.i, j: st.j});
+  const t = Math.max(0, Math.min(st.n, Math.round(dot(sub(p, g.pts[k0]), uv) / dot(uv, uv))));
+  return {i: a.i + t * st.i, j: a.j + t * st.j};
+}
+function strandNear(q, p0) {
+  const g = G.get(q.id), p = toLocal(q, p0);
+  if (!g) return false;
+  const n = g.In.length, tol = 12 / vb.z;
+  for (let k = 0; k < g.nseg; k++)
+    if (distSeg(p, g.pts[k], g.pts[(k + 1) % n]) < tol || distSeg(p, g.Out[k], g.In[(k + 1) % n]) < tol) return true;
+  return false;
+}
+// the protein axis edge near p, and the lattice point on it
+function blobEdgeNear(b, p0) {
+  const p = toLocal(b, p0), tol = 12 / vb.z;
+  let best = null, bd = tol;
+  for (const n of b.nodes) {
+    if (n.parent == null) continue;
+    const par = b.nodes.find(x => x.id === n.parent);
+    if (!par) continue;
+    const pts = route(par, n).map(W);
+    for (let k = 1; k < pts.length; k++) { const d = distSeg(p, pts[k - 1], pts[k]); if (d < bd) { bd = d; best = n; } }
+  }
+  return best;
+}
+function blobEdgePoint(par, child, p) {
+  const pts = route(par, child);
+  let bi = 0, bd = Infinity;
+  for (let k = 1; k < pts.length; k++) {
+    const sd = segDist2(p.x, p.y, W(pts[k - 1]), W(pts[k]));
+    if (sd.d2 < bd) { bd = sd.d2; bi = k - 1; }
+  }
+  const a = pts[bi], b2 = pts[bi + 1], st = step(a, b2);
+  if (!st) return null;
+  const uv = W({i: st.i, j: st.j});
+  const t = Math.max(0, Math.min(st.n, Math.round(dot(sub(p, W(a)), uv) / dot(uv, uv))));
+  let Q = {i: a.i + t * st.i, j: a.j + t * st.j};
+  if (eq(Q, par) || eq(Q, child)) {
+    if (pts.length === 3) Q = pts[1];
+    else if (st.n > 1) Q = {i: a.i + st.i, j: a.j + st.j};
+    else return null;
+  }
+  return (eq(Q, par) || eq(Q, child)) ? null : Q;
+}
+// where an Option-click would put the next node: on the path if the cursor is over it, else at the end
+function extendTarget(p) {
+  const at = p || curPt;
+  if (mode !== 'select' || drawing || pdraw || !altDown || !at) return null;
+  const b = blobById(selBlob), anchor = b && selBlobNode != null ? b.nodes.find(n => n.id === selBlobNode) : null;
+  if (b) {
+    const child = blobEdgeNear(b, at);
+    if (child) {
+      const Q = blobEdgePoint(b.nodes.find(x => x.id === child.parent), child, toLocal(b, at));
+      if (Q) return {kind: 'binsert', childId: child.id, at: Q};
+    }
+    if (anchor) { const q = toLocal(b, at); return {kind: 'blob', at: nearest(q.x, q.y)}; }
+    return null;
+  }
+  const qs = selStrands();
+  if (qs.length === 1) {
+    const q = qs[0];
+    if (strandNear(q, at)) {
+      const Q = strandPoint(q, at);
+      if (Q && !q.nodes.some(n => eq(n, Q))) return {kind: 'sinsert', id: q.id, at: Q};
+    }
+    if (!q.closed) {
+      const la = toLocal(q, at);
+      const atStart = len(sub(la, W(q.nodes[0]))) < len(sub(la, W(q.nodes.at(-1))));
+      return {kind: 'strand', atStart, at: snapRay(atStart ? q.nodes[0] : q.nodes.at(-1), la)};
+    }
+  }
+  return null;
+}
+// option-click in select mode: one more node, repeatable while Option is held
+function extendSelection(p) {
+  const t = extendTarget(p);
+  if (!t) return false;
+  pushHistory();
+  if (t.kind === 'binsert') {
+    const b = blobById(selBlob), child = b.nodes.find(n => n.id === t.childId);
+    const par = b.nodes.find(n => n.id === child.parent);
+    const n = {id: b.next++, i: t.at.i, j: t.at.j, r: (par.r + child.r) / 2, parent: par.id};
+    child.parent = n.id;
+    b.nodes.push(n);
+    selBlobNode = n.id;
+  } else if (t.kind === 'blob') {
+    const b = blobById(selBlob), anchor = b.nodes.find(n => n.id === selBlobNode);
+    const n = {id: b.next++, i: t.at.i, j: t.at.j, r: anchor.r, parent: anchor.id};
+    b.nodes.push(n);
+    selBlobNode = n.id;
+  } else if (t.kind === 'sinsert') {
+    const q = byId(t.id), k = insertOnStrand(q, t.at);
+    if (k >= 0) selNodes = new Set([ref(q.id, k)]);
+  } else {
+    const q = selStrands()[0];
+    t.atStart ? q.nodes.unshift({i: t.at.i, j: t.at.j}) : q.nodes.push({i: t.at.i, j: t.at.j});
+  }
+  return true;
+}
+
+// ---------- rotate / scale ----------
+const ROT_STEP = 15;  // every object turns in 15 degree steps
+function applyRotate(o, orig, steps) {
+  if (o.kind === 's') {
+    // The nodes themselves turn, so they stay on the grid. Only multiples of 60 map the lattice
+    // onto itself, so at the angles in between each node lands on its nearest grid point and the
+    // strand is stretched or squeezed by up to half a step. Always measured from the original.
+    const c = orig.rc || latCenter(orig.each.flatMap(e => e.nodes)), C = W(c), a = steps * ROT_STEP;
+    o.objs.forEach((obj, k) => {
+      obj.nodes = orig.each[k].nodes.map(n => {
+        const q = rotPt(W(n), C, a);
+        return {...n, ...nearest(q.x, q.y)};
+      });
+    });
+    return;
+  }
+  const rc = orig.rc || latCenter(o.objs.flatMap(x => x.nodes || []));
+  o.objs.forEach((obj, k) => {
+    obj.rot = ((orig.each[k].rot + steps * ROT_STEP) % 360 + 360) % 360;
+    if (o.kind !== 'm') obj.rc = orig.each[k].rc || rc;
+  });
+}
+function applyScale(o, orig, k) {
+  o.objs.forEach((obj, idx) => {
+    const e = orig.each[idx];
+    if (o.kind === 'm') {
+      const w = Math.max(16, e.w * k), h = Math.max(16, e.h * k);
+      obj.w = w; obj.h = h;
+      obj.x = e.cx - w / 2; obj.y = e.cy - h / 2;
+      return;
+    }
+    const c = e.rc || latCenter(e.nodes);
+    obj.nodes = e.nodes.map(n => ({
+      ...n,
+      i: c.i + Math.round((n.i - c.i) * k),
+      j: c.j + Math.round((n.j - c.j) * k),
+      ...(n.r != null ? {r: Math.max(6, Math.round(n.r * k))} : {}),
+    }));
+  });
+}
+const origOf = o => ({
+  rc: o.objs[0].rc,
+  each: o.objs.map(obj => o.kind === 'm'
+    ? {rot: obj.rot || 0, w: obj.w, h: obj.h, cx: obj.x + obj.w / 2, cy: obj.y + obj.h / 2}
+    : {rot: obj.rot || 0, rc: obj.rc, nodes: obj.nodes.map(n => ({...n}))}),
+});
+function hitRotate(p) {
+  const fr = selFrame();
+  return !!fr && len(sub(p, rotHandlePos(fr))) < 11 / vb.z;
+}
+function hitScale(p) {
+  const fr = selFrame();
+  if (!fr || fr.o.kind === 's') return -1;  // strands keep their node handles
+  return boxCorners(fr.lb).map(fr.wpt).findIndex(c => len(sub(p, c)) < 9 / vb.z);
+}
+
+// ---------- drawing ----------
+function setMode(m) {
+  if (drawing) finishDraw(true);
+  pdraw = null;
+  mode = m;
+  if (m !== 'select') clearSel();
+  render();
+}
+function finishDraw(keepMode) {
+  const id = drawing && drawing.id;
+  drawing = null;
+  cleanup();
+  if (undoStack.length && undoStack.at(-1) === snap()) undoStack.pop();
+  if (!keepMode) { mode = 'select'; if (byId(id)) sel = new Set(unitIds(id)); }
+  render();
+}
+function finishProtein(keepMode) {
+  const bid = pdraw && pdraw.bid;
+  pdraw = null;
+  if (!keepMode) { mode = 'select'; if (blobById(bid)) { selBlob = bid; selBlobNode = blobById(bid).nodes.at(-1).id; } }
+  render();
+}
+function newStrandAt(p) {
+  pushHistory();
+  const q = {id: nextId++, nodes: [nearest(p.x, p.y)], closed: false, color: DEFAULT_COLOR, bases: true, group: null, pair: null};
+  strands.push(q);
+  zAdd('s:' + q.id);
+  drawing = {id: q.id, preview: null, side: 0, atStart: false};
+  sel = new Set([q.id]); selNodes.clear(); selBlob = null; selBlobNode = null;
+  return q;
+}
+function newBlobAt(p) {
+  pushHistory();
+  const c = nearest(p.x, p.y);
+  const b = {id: nextBid++, color: BLOB_COLOR, next: 2, nodes: [{id: 1, i: c.i, j: c.j, r: cfg.blobR, parent: null}]};
+  blobs.push(b);
+  zAdd('b:' + b.id);
+  sel.clear(); selNodes.clear();
+  selBlob = b.id; selBlobNode = 1;
+  return b;
+}
+// commit the previewed strand node. 'none': nothing previewed yet, keep going.
+// 'anchor': the last node was clicked again, so the path is finished.
+function commitStrandNode() {
+  const q = byId(drawing.id), ns = q.nodes, t = drawing.preview;
+  if (!t) return 'none';
+  const anchor = drawing.atStart ? ns[0] : ns.at(-1), other = drawing.atStart ? ns.at(-1) : ns[0];
+  if (ns.length >= 3 && eq(t, other)) { ns[ns.length - 1] = {...ns.at(-1), s: drawing.side}; q.closed = true; return 'closed'; }
+  if (eq(t, anchor)) return 'anchor';
+  if (drawing.atStart) ns.unshift({i: t.i, j: t.j, s: drawing.side});
+  else { ns[ns.length - 1] = {...anchor, s: drawing.side}; ns.push({i: t.i, j: t.j}); }
+  drawing.preview = null;
+  return true;
+}
+
+// ---------- pointer ----------
+function inImport(m, p) {  // undo the placement rotation before the box test
+  let q = p;
+  if (m.rot) {
+    const cx = m.x + m.w / 2, cy = m.y + m.h / 2, a = -m.rot * Math.PI / 180;
+    const dx = p.x - cx, dy = p.y - cy;
+    q = {x: cx + dx * Math.cos(a) - dy * Math.sin(a), y: cy + dx * Math.sin(a) + dy * Math.cos(a)};
+  }
+  return q.x >= m.x && q.x <= m.x + m.w && q.y >= m.y && q.y <= m.y + m.h;
+}
+function clearSel() { sel.clear(); selNodes.clear(); selBlob = null; selBlobNode = null; selImport = null; }
+function hoverCursor(p) {
+  let c;
+  if (mode !== 'select' || drawing || pdraw) c = 'crosshair';
+  else if (hitRotate(p)) c = 'grab';
+  else if (hitScale(p) >= 0) c = 'nwse-resize';
+  else if (hitHandle(p) || (selBlob != null && hitBlobNode(p))) c = 'move';
+  else if (hitEdgeHandle(p)) c = 'ns-resize';
+  else if (selBlob != null && hitBlobRing(p)) c = 'nwse-resize';
+  else if (hitStrand(p) != null || hitBlob(p) != null) c = 'pointer';
+  else c = 'default';
+  svgEl.style.cursor = c;
+}
+
+svgEl.addEventListener('contextmenu', e => e.preventDefault());
+svgEl.addEventListener('pointerdown', e => {
+  const p = draw.point(e.clientX, e.clientY);
+  svgEl.setPointerCapture(e.pointerId);
+  pop.style.display = 'none'; exportMenu.style.display = 'none';
+  if (layersOpen) layersOpen = false;
+  if (e.button !== 0) return;
+
+  const now0 = performance.now();
+  const dbl = lastDown && now0 - lastDown.t < 400 && Math.hypot(e.clientX - lastDown.x, e.clientY - lastDown.y) < 6;
+  if (drawing || pdraw) {
+    lastDown = dbl ? null : {t: now0, x: e.clientX, y: e.clientY};
+    drag = {type: drawing ? 'ndrag' : 'pdrag', dbl};
+    return;
+  }
+  if (mode === 'na') { newStrandAt(p); drag = {type: 'ndrag'}; render(); return; }
+  if (mode === 'protein') { const b = newBlobAt(p); pdraw = {bid: b.id, nid: 1, preview: null}; drag = {type: 'pdrag'}; render(); return; }
+
+  if (e.altKey) { altDown = true; curPt = p; if (extendSelection(p)) { render(); return; } }
+
+  const fr0 = selFrame();
+  if (fr0 && hitRotate(p)) {
+    const c = fr0.wpt(boxCenter(fr0.lb));
+    pushHistory();
+    drag = {type: 'rotate', o: fr0.o, orig: origOf(fr0.o), c, a0: Math.atan2(p.y - c.y, p.x - c.x), steps: 0};
+    return;
+  }
+  if (fr0 && hitScale(p) >= 0) {
+    const c = fr0.wpt(boxCenter(fr0.lb));
+    pushHistory();
+    drag = {type: 'scale', o: fr0.o, orig: origOf(fr0.o), c, d0: Math.max(4, len(sub(p, c))), k: 1};
+    return;
+  }
+
+  if (selBlob != null) {
+    const bn = hitBlobNode(p);
+    if (bn != null) { pushHistory(); selBlobNode = bn; drag = {type: 'bnode', bid: selBlob, nid: bn}; render(); return; }
+    const br = hitBlobRing(p);
+    if (br != null) { pushHistory(); selBlobNode = br; drag = {type: 'bring', bid: selBlob, nid: br}; render(); return; }
+  }
+
+  const now = performance.now(), isDbl = lastDown && now - lastDown.t < 400 && Math.hypot(e.clientX - lastDown.x, e.clientY - lastDown.y) < 6;
+  lastDown = isDbl ? null : {t: now, x: e.clientX, y: e.clientY};
+
+  const h = hitHandle(p);
+  const eh = !h ? hitEdgeHandle(p) : null;
+  if (eh) { pushHistory(); drag = {type: 'side', id: eh.id, e: eh.e, seg: eh.seg, sx: e.clientX, sy: e.clientY, moved: false}; return; }
+  const id = !h ? hitStrand(p) : null;
+  if (isDbl && id != null) { insertNode(id, p); return; }
+  if (h) {
+    const r = ref(h.id, h.k);
+    if (e.shiftKey) { selNodes.has(r) ? selNodes.delete(r) : selNodes.add(r); render(); return; }
+    if (!selNodes.has(r)) selNodes = new Set([r]);
+    pushHistory();
+    drag = {type: 'nodes', s: p, orig: new Map([...selNodes].map(q => { const [i2, k] = unref(q); return [q, {...byId(i2).nodes[k]}]; })), changed: false};
+    render();
+    return;
+  }
+  if (id != null) {
+    const u = e.metaKey || e.ctrlKey ? [id] : unitIds(id);
+    selBlob = null; selBlobNode = null;
+    if (e.shiftKey) {
+      const all = u.every(i => sel.has(i));
+      u.forEach(i => all ? sel.delete(i) : sel.add(i));
+      selNodes.clear(); render(); return;
+    }
+    if (!sel.has(id)) sel = new Set(u);
+    selNodes.clear(); pushHistory();
+    drag = {type: 'move', s: p, orig: new Map([...sel].map(i => [i, byId(i).nodes.map(n => ({...n}))])),
+      rc: new Map([...sel].map(i => [i, byId(i).rc && {...byId(i).rc}])), changed: false};
+    render();
+    return;
+  }
+  const im = [...imports].reverse().find(m => inImport(m, p));
+  if (im && hitBlob(p) == null) {
+    clearSel();
+    selImport = im.id;
+    pushHistory();
+    drag = {type: 'imove', id: im.id, s: p, ox: im.x, oy: im.y, changed: false};
+    render();
+    return;
+  }
+  const bid = hitBlob(p);
+  if (bid != null) {
+    sel.clear(); selNodes.clear();
+    selBlob = bid;
+    const b = blobById(bid);
+    let bn = b.nodes[0], bd = Infinity;
+    const lp0 = toLocal(b, p);
+    for (const n of b.nodes) { const d = len(sub(lp0, W(n))); if (d < bd) { bd = d; bn = n; } }
+    selBlobNode = bn.id;
+    pushHistory();
+    drag = {type: 'bmove', bid, s: p, orig: b.nodes.map(n => ({...n})), changed: false};
+    render();
+    return;
+  }
+  drag = {type: 'maybe', s: p, sx: e.clientX, sy: e.clientY};
+});
+
+svgEl.addEventListener('pointermove', e => {
+  const p = draw.point(e.clientX, e.clientY);
+  if (pdraw) {
+    const c = nearest(p.x, p.y);
+    if (!pdraw.preview || !eq(c, pdraw.preview)) { pdraw.preview = c; render(); }
+    svgEl.style.cursor = 'crosshair';
+    return;
+  }
+  if (drawing) {
+    const ns = byId(drawing.id).nodes, c0 = nearest(p.x, p.y);
+    const last = drawing.atStart ? ns[0] : ns.at(-1), other = drawing.atStart ? ns.at(-1) : ns[0];
+    const c = ns.length >= 3 && eq(c0, other) ? other : snapRay(last, p);
+    const r = route(last, c), u = unit(sub(W(r[1] || c), W(last))), off = dot(sub(p, W(last)), {x: u.y, y: -u.x});
+    let side = Math.abs(off) < halfWidth() * 0.6 ? 0 : Math.sign(off);
+    if (drawing.atStart) side = -side;
+    if (!drawing.preview || !eq(c, drawing.preview) || side !== drawing.side) { drawing.preview = c; drawing.side = side; render(); }
+    return;
+  }
+  if (!drag) {
+    curPt = p;
+    if (altDown !== e.altKey) altDown = e.altKey;
+    if (extendTarget()) { render(); svgEl.style.cursor = 'copy'; return; }
+    hoverCursor(p);
+    return;
+  }
+  if (drag.type === 'maybe') {
+    if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 4) return;
+    drag = {type: 'marquee', s: drag.s, r: null};
+  }
+  if (drag.type === 'rotate') {
+    const a = Math.atan2(p.y - drag.c.y, p.x - drag.c.x);
+    const steps = Math.round((a - drag.a0) / (ROT_STEP * Math.PI / 180));
+    if (steps !== drag.steps) { drag.steps = steps; applyRotate(drag.o, drag.orig, steps); render(); }
+  } else if (drag.type === 'scale') {
+    const k = Math.max(0.2, Math.min(6, len(sub(p, drag.c)) / drag.d0));
+    if (Math.abs(k - drag.k) > 0.01) { drag.k = k; applyScale(drag.o, drag.orig, k); render(); }
+  } else if (drag.type === 'imove') {
+    const m = imports.find(q => q.id === drag.id);
+    m.x = drag.ox + (p.x - drag.s.x); m.y = drag.oy + (p.y - drag.s.y);
+    drag.changed = true;
+    render();
+  } else if (drag.type === 'bnode') {
+    const b = blobById(drag.bid), n = b.nodes.find(q => q.id === drag.nid);
+    const lp = toLocal(b, p), c = nearest(lp.x, lp.y);
+    if (eq(c, n)) return;
+    n.i = c.i; n.j = c.j;
+    render();
+  } else if (drag.type === 'bring') {
+    const b = blobById(drag.bid), n = b.nodes.find(q => q.id === drag.nid);
+    n.r = Math.max(6, Math.min(160, Math.round(len(sub(toLocal(b, p), W(n))))));
+    render();
+  } else if (drag.type === 'bmove') {
+    const b0 = blobById(drag.bid), lp = toLocal(b0, p), ls = toLocal(b0, drag.s);
+    const d = nearest(lp.x - ls.x, lp.y - ls.y);
+    if (d.i === drag.di && d.j === drag.dj) return;
+    drag.di = d.i; drag.dj = d.j;
+    b0.nodes = drag.orig.map(n => ({...n, i: n.i + d.i, j: n.j + d.j}));
+    if (b0.rc) b0.rc = {i: b0.rc.i + d.i, j: b0.rc.j + d.j};  // the pivot travels with it
+    drag.changed = !!(d.i || d.j);
+    render();
+  } else if (drag.type === 'nodes' || drag.type === 'move') {
+    const lead = byId(drag.type === 'nodes' ? unref([...drag.orig.keys()][0])[0] : [...drag.orig.keys()][0]);
+    const lp = toLocal(lead, p), ls = toLocal(lead, drag.s);
+    const d = nearest(lp.x - ls.x, lp.y - ls.y);
+    if (d.i === drag.di && d.j === drag.dj) return;
+    drag.di = d.i; drag.dj = d.j;
+    if (drag.type === 'nodes') for (const [r, o] of drag.orig) { const [id, k] = unref(r); byId(id).nodes[k] = {...o, i: o.i + d.i, j: o.j + d.j}; }
+    else for (const [i, o] of drag.orig) {
+      const q = byId(i);
+      q.nodes = o.map(n => ({...n, i: n.i + d.i, j: n.j + d.j}));
+      if (q.rc) q.rc = {i: drag.rc.get(i).i + d.i, j: drag.rc.get(i).j + d.j};
+    }
+    drag.changed = !!(d.i || d.j);
+    render();
+  } else if (drag.type === 'side') {
+    if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 4) drag.moved = true;
+    if (!drag.moved) return;
+    const off = dot(sub(toLocal(byId(drag.id), p), drag.seg.A), drag.seg.nl);
+    if (Math.abs(off) < 2) return;
+    const q = byId(drag.id), si = Math.sign(off);
+    if (q.nodes[drag.e].s !== si) { q.nodes[drag.e] = {...q.nodes[drag.e], s: si}; render(); }
+  } else if (drag.type === 'marquee') {
+    const r = {x: Math.min(p.x, drag.s.x), y: Math.min(p.y, drag.s.y), w: Math.abs(p.x - drag.s.x), h: Math.abs(p.y - drag.s.y)};
+    const inR = t => t.x >= r.x && t.x <= r.x + r.w && t.y >= r.y && t.y <= r.y + r.h;
+    drag.r = r;
+    sel = new Set(); selNodes = new Set();
+    for (const q of strands) q.nodes.forEach((_, k) => {
+      if (inR(handleWorld(q, k))) { sel.add(q.id); selNodes.add(ref(q.id, k)); }
+    });
+    render();
+  }
+});
+function endDrag(e) {
+  if (!drag) return;
+  const d = drag;
+  drag = null;
+  if (d.type === 'ndrag') {  // keep placing strand nodes; double-click, Enter/Esc, or the last node stops
+    if (d.dbl) { finishDraw(); return; }
+    const r = commitStrandNode();
+    if (r === 'closed' || r === 'anchor') { finishDraw(); return; }
+    render();
+    return;
+  }
+  if (d.type === 'pdrag') {  // keep placing protein nodes
+    if (d.dbl) { finishProtein(); return; }
+    const b = blobById(pdraw.bid), a = b && b.nodes.find(n => n.id === pdraw.nid), c = pdraw.preview;
+    if (!b || !a) { finishProtein(); return; }
+    if (!c) { render(); return; }            // first click: the node is down, keep going
+    if (eq(c, a)) { finishProtein(); return; }
+    pushHistory();
+    const n = {id: b.next++, i: c.i, j: c.j, r: a.r, parent: a.id};
+    b.nodes.push(n);
+    pdraw.nid = n.id; pdraw.preview = null; selBlobNode = n.id;
+    render();
+    return;
+  }
+  if (d.type === 'maybe') { clearSel(); render(); return; }  // click on empty canvas deselects
+  if (d.type === 'side' && undoStack.at(-1) === snap()) undoStack.pop();
+  if ((d.type === 'move' || d.type === 'nodes' || d.type === 'bmove' || d.type === 'imove') && !d.changed) undoStack.pop();
+  if (d.type === 'rotate' && !d.steps) undoStack.pop();
+  if (d.type === 'rotate' && d.o.kind === 's') cleanup();  // a snapped node may have landed on its neighbor
+  if (d.type === 'scale' && Math.abs(d.k - 1) < 0.02) undoStack.pop();
+  if (d.type === 'nodes' && d.changed) cleanup();
+  render();
+}
+svgEl.addEventListener('pointerup', endDrag);
+svgEl.addEventListener('pointercancel', endDrag);
+svgEl.addEventListener('wheel', e => {  // two-finger drag pans, pinch zooms
+  e.preventDefault();
+  if (e.ctrlKey) zoomAt(vb.z * Math.exp(-e.deltaY * 0.01), e.clientX, e.clientY);
+  else { vb.x += e.deltaX / vb.z; vb.y += e.deltaY / vb.z; setVB(); }
+}, {passive: false});
+
+// ---------- keyboard ----------
+addEventListener('keyup', e => { if (e.key === 'Alt' && altDown) { altDown = false; if (!drag) render(); } });
+addEventListener('blur', () => { if (altDown) { altDown = false; render(); } });
+addEventListener('keydown', e => {
+  if (e.target.matches('input')) return;
+  if (e.key === 'Alt' && !altDown) { altDown = true; if (!drag) render(); }
+  const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
+  if (mod && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+  if (mod && k === 'y') { e.preventDefault(); redo(); return; }
+  if (mod && k === 'g') {
+    e.preventDefault();
+    if (e.shiftKey) { if ([...sel].some(id => byId(id).group)) { pushHistory(); sel.forEach(id => byId(id).group = null); } }
+    else if (sel.size > 1) { pushHistory(); const g = nextGid++; sel.forEach(id => byId(id).group = g); }
+    render();
+    return;
+  }
+  if (mod && k === 'a') { e.preventDefault(); sel = new Set(strands.map(q => q.id)); selNodes.clear(); selBlob = null; render(); return; }
+  if (mod) return;
+  if (e.key === 'Escape') {
+    if (pdraw) finishProtein();
+    else if (drawing) finishDraw();
+    else { clearSel(); setMode('select'); }
+    return;
+  }
+  if (e.key === 'Enter') { if (pdraw) finishProtein(); else if (drawing) finishDraw(); return; }
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    e.preventDefault();
+    if (pdraw) {
+      const b = blobById(pdraw.bid);
+      if (b && b.nodes.length > 1) {
+        const a = b.nodes.find(n => n.id === pdraw.nid), par = a.parent;
+        blobDeleteNode(b, a.id);
+        if (par != null) { pdraw.nid = par; selBlobNode = par; } else finishProtein();
+      } else finishProtein();
+      render();
+      return;
+    }
+    if (drawing) {
+      const q = byId(drawing.id);
+      if (q.nodes.length > 1) { drawing.atStart ? q.nodes.shift() : q.nodes.pop(); drawing.preview = null; render(); }
+      return;
+    }
+    selNodes.size ? delNodes() : delSel();
+    render();
+  }
+});
+addEventListener('resize', setVB);
+
+// ---------- toolbar ----------
+const bar = document.getElementById('bar');
+const svgIcon = inner => `<svg viewBox="0 0 24 24">${inner}</svg>`;
+const ICON = {
+  // single strand: a straight fragment, backbone below, bases reaching up
+  na: svgIcon('<path d="M3 16.5h18"/><path d="M6 16.5V12M10 16.5V12M14 16.5V12M18 16.5V12"/>'),
+  // duplex: two backbones with the bases meeting in between
+  complement: svgIcon('<path d="M3 5.5h18M3 18.5h18"/><path d="M6 5.5v13M10 5.5v13M14 5.5v13M18 5.5v13"/>'),
+  basesOn: svgIcon('<path d="M3 16.5h18"/><path d="M6 16.5V12M10 16.5V12M14 16.5V12M18 16.5V12"/>'),
+  basesOff: svgIcon('<path d="M3 16.5h18"/>'),
+  labelsOn: svgIcon('<text x="12" y="16" text-anchor="middle" font-size="11" font-family="system-ui,sans-serif" font-weight="600">5′3′</text>'),
+  labelsOff: svgIcon('<text x="12" y="16" text-anchor="middle" font-size="11" font-family="system-ui,sans-serif" font-weight="600" opacity="0.55">5′3′</text><path d="M4.5 19.5 19.5 4.5"/>'),
+  protein: svgIcon('<path d="M9.2 3.2c2.7 0 4.1 1.8 5.1 3.4.6 1 1.4 1.3 2.6 1.5 3 .5 4.6 3 4.6 5.8 0 3.6-3 6.6-7 6.6-1.2 0-2.1.3-3.3.3-5 0-8.2-3.5-8.2-8 0-1.4.3-2.4.4-3.5.3-3.4 2.4-6.1 5.8-6.1z"/>'),
+};
+bar.querySelector('[data-mode=na]').innerHTML = ICON.na;
+bar.querySelector('[data-mode=protein]').innerHTML = ICON.protein;
+bar.querySelector('[data-act=complement]').innerHTML = ICON.complement;
+function syncBar() {
+  bar.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
+  const qs = selStrands().filter(q => q.nodes.length > 1), naSel = qs.length > 0;
+  const el = a => bar.querySelector(`[data-act=${a}]`);
+  ['complement', 'bases', 'labels'].forEach(a => el(a).classList.toggle('hide', !naSel));
+  if (naSel) {  // bases and labels say their state through the glyph, not a filled button
+    el('complement').classList.toggle('on', qs.every(q => q.pair));
+    const bOn = qs.every(q => q.bases !== false), lOn = qs.every(q => q.labels !== false);
+    el('bases').innerHTML = bOn ? ICON.basesOn : ICON.basesOff;
+    el('labels').innerHTML = lOn ? ICON.labelsOn : ICON.labelsOff;
+  }
+  const anySel = naSel || (selBlob != null && blobById(selBlob));
+  swatch.classList.toggle('hide', !anySel);
+  document.getElementById('sep2').classList.toggle('hide', !anySel);
+  if (!anySel) pop.style.display = 'none';
+  document.getElementById('undo').disabled = !undoStack.length;
+  document.getElementById('redo').disabled = !redoStack.length;
+  if (anySel) swatch.style.background = currentColor();
+}
+bar.addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  if (b.dataset.mode) { setMode(b.dataset.mode); return; }
+  const a = b.dataset.act;
+  if (!a) return;
+  if (a === 'complement') { toggleComplement(); render(); return; }
+  const qs = selStrands().filter(q => q.nodes.length > 1);
+  if (!qs.length) return;
+  pushHistory();
+  if (a === 'bases') { const v = !qs.every(q => q.bases !== false); qs.forEach(q => q.bases = v); }
+  if (a === 'labels') { const v = !qs.every(q => q.labels !== false); qs.forEach(q => q.labels = v); }
+  render();
+});
+document.getElementById('undo').onclick = undo;
+document.getElementById('redo').onclick = redo;
+
+// ---------- layers ----------
+const layersEl = document.getElementById('layers'), layerList = document.getElementById('layerList');
+let layerDragKey = null, layersOpen = false;
+function layerName(o, idx) {
+  if (o.kind === 'm') return o.obj.name;
+  if (o.kind === 'b') return 'Protein ' + idx.b;
+  return (o.obj.pair && strands.find(q => q.id === o.obj.pair && q.id < o.obj.id) ? 'Strand ' : 'DNA ') + idx.s;
+}
+function layerColor(o) { return o.kind === 'm' ? '#e5e7eb' : o.obj.color; }
+const layerSelected = o => o.kind === 'm' ? selImport === o.id : o.kind === 'b' ? selBlob === o.id : sel.has(o.id);
+function buildLayers() {
+  const all = zList();
+  layersEl.style.display = layersOpen ? 'block' : 'none';
+  document.getElementById('layersBtn').classList.toggle('on', layersOpen);
+  if (!layersOpen) return;
+  if (!all.length) { layerList.innerHTML = '<div class="layer" style="color:#9ca3af">nothing yet</div>'; return; }
+  const idx = {s: 0, b: 0};
+  const names = all.map(o => { if (o.kind === 's') idx.s++; if (o.kind === 'b') idx.b++; return layerName(o, idx); });
+  layerList.innerHTML = all.map((o, k) => `<div class="layer${layerSelected(o) ? ' sel' : ''}" draggable="true" data-k="${o.kind}:${o.id}">` +
+    `<span class="grip">⠿</span><span class="dot" style="background:${layerColor(o)}"></span><span class="nm">${esc(names[k])}</span></div>`)
+    .reverse().join('');
+}
+function selectKey(k) {
+  const [kind, id] = [k[0], +k.slice(2)];
+  clearSel();
+  if (kind === 'm') selImport = id;
+  else if (kind === 'b') { const b = blobById(id); if (b) { selBlob = id; selBlobNode = b.nodes[0].id; } }
+  else sel = new Set(unitIds(id));
+  render();
+}
+layerList.addEventListener('click', e => { const it = e.target.closest('.layer'); if (it) selectKey(it.dataset.k); });
+layerList.addEventListener('dragstart', e => {
+  const it = e.target.closest('.layer');
+  if (!it) return;
+  layerDragKey = it.dataset.k;
+  e.dataTransfer.effectAllowed = 'move';
+});
+layerList.addEventListener('dragover', e => {
+  e.preventDefault();
+  const it = e.target.closest('.layer');
+  if (!it || !layerDragKey || it.dataset.k === layerDragKey) return;
+  const items = [...layerList.children], from = items.findIndex(x => x.dataset.k === layerDragKey), to = items.indexOf(it);
+  if (from < 0) return;
+  layerList.insertBefore(items[from], from < to ? it.nextSibling : it);
+});
+layerList.addEventListener('drop', e => e.preventDefault());
+layerList.addEventListener('dragend', () => {
+  if (!layerDragKey) return;
+  layerDragKey = null;
+  pushHistory();
+  zOrder = [...layerList.children].map(x => x.dataset.k).reverse();  // the panel lists the top first
+  render();
+});
+
+document.getElementById('layersBtn').onclick = () => {
+  layersOpen = !layersOpen;
+  render();
+  if (layersOpen) { layersEl.style.right = 'auto'; placeUnder(layersEl, document.getElementById('layersBtn')); }
+};
+
+// ---------- color ----------
+const pop = document.getElementById('pop'), swatch = document.getElementById('swatch');
+let lastColor = DEFAULT_COLOR;
+const baseOf = c => Object.keys(OC).find(k => OC[k].includes(c));
+function currentColor() {
+  if (selBlob != null && blobById(selBlob)) return blobById(selBlob).color;
+  const qs = selStrands();
+  return qs.length ? qs[0].color : lastColor;
+}
+const hexOut = document.getElementById('hexOut');
+function buildColors() {
+  const cur = currentColor(), base = baseOf(cur);
+  hexOut.textContent = cur;
+  const sw = (c, on) => `<button class="sw${on ? ' on' : ''}" style="background:${c}" data-color="${c}" title="${c}"></button>`;
+  document.getElementById('baseRow').innerHTML = sw(BLACK, cur === BLACK) + Object.keys(OC).map(k => sw(OC[k][6], base === k)).join('');
+  document.getElementById('shadeRow').innerHTML = base ? SHADES.map(i => sw(OC[base][i], cur === OC[base][i])).join('') : '';
+}
+function placeUnder(menu, btn) {
+  const r = btn.getBoundingClientRect();
+  menu.style.top = (r.bottom + 6) + 'px';
+  menu.style.left = Math.max(6, Math.min(r.left, innerWidth - menu.offsetWidth - 6)) + 'px';
+}
+swatch.onclick = () => {
+  const open = pop.style.display === 'flex';
+  exportMenu.style.display = 'none';
+  pop.style.display = open ? 'none' : 'flex';
+  if (!open) { buildColors(); placeUnder(pop, swatch); }
+};
+pop.addEventListener('mouseover', e => {
+  const b = e.target.closest('.sw');
+  if (b) hexOut.textContent = b.dataset.color;
+});
+pop.addEventListener('mouseleave', () => { hexOut.textContent = currentColor(); });
+pop.addEventListener('click', e => {
+  const b = e.target.closest('.sw');
+  if (!b) return;
+  const c = b.dataset.color;
+  lastColor = c;
+  if (selBlob != null) { pushHistory(); blobById(selBlob).color = c; }
+  else if (sel.size) { pushHistory(); selStrands().forEach(q => q.color = c); }
+  render();
+  buildColors();
+});
+
+// ---------- export ----------
+const anySel = () => sel.size || selBlob != null || selImport != null;
+const exportIds = () => ({
+  ids: (sel.size ? [...sel] : (anySel() ? [] : strands.map(q => q.id))).filter(id => byId(id) && byId(id).nodes.length > 1),
+  bids: selBlob != null ? [selBlob] : (anySel() ? [] : blobs.map(b => b.id)),
+  mids: selImport != null ? imports.filter(m => m.id === selImport) : (anySel() ? [] : imports),
+});
+function buildSVG() {
+  const {ids, bids, mids} = exportIds();
+  if (!ids.length && !bids.length && !mids.length) return null;
+  const b = bounds(ids, bids, mids), pad = cfg.w + 6;
+  const x = f(b.x - pad), y = f(b.y - pad), w = f(b.w + 2 * pad), h = f(b.h + 2 * pad);
+  const txt = (t, p, c) => `<text x="${f(p.x)}" y="${f(p.y)}" fill="${c}" stroke="none" font-family="system-ui, sans-serif" font-size="11" font-weight="600" text-anchor="middle" dominant-baseline="central">${t}</text>`;
+  const one = q => {
+    const g = G.get(q.id);
+    const t = g.ticks.map(([a, c]) => `<line x1="${f(a.x)}" y1="${f(a.y)}" x2="${f(c.x)}" y2="${f(c.y)}"/>`).join('');
+    const l = g.lab ? txt('5′', g.lab.p5, q.color) + txt('3′', g.lab.p3, q.color) : '';
+    const pv = blobPivot(q), rt = q.rot ? ` transform="rotate(${f(q.rot)} ${f(pv.x)} ${f(pv.y)})"` : '';
+    return `<g id="strand-${q.id}" stroke="${q.color}"${rt}><g stroke-width="${cfg.tw}">${t}</g><path d="${g.d}" stroke-width="${cfg.w}" stroke-linecap="round" stroke-linejoin="round"/>${l}</g>`;
+  };
+  let defs = '', blobBody = '';
+  for (const m of mids) blobBody += `<image href="${m.src}" x="${f(m.x)}" y="${f(m.y)}" width="${f(m.w)}" height="${f(m.h)}"` +
+    (m.rot ? ` transform="rotate(${f(m.rot)} ${f(m.x + m.w / 2)} ${f(m.y + m.h / 2)})"` : '') + `/>\n`;
+  for (const id of bids) {
+    const g = BP.get(id), col = blobById(id).color;
+    if (!g || !g.d) continue;
+    const bb = blobById(id), bc = blobPivot(bb);
+    const tr = bb.rot ? ` transform="rotate(${f(bb.rot)} ${f(bc.x)} ${f(bc.y)})"` : '';
+    blobBody += `<g id="blob-${id}"${tr}><path d="${g.d}" fill="${blobRim(col)}"/>` +
+      (g.dIn ? `<path d="${g.dIn}" fill="${col}" transform="translate(${INSET.dx} ${INSET.dy})"/>` : '') + `</g>\n`;
+  }
+  const groups = new Map(), loose = [];
+  for (const q of strands.filter(q => ids.includes(q.id))) q.group ? (groups.get(q.group) || groups.set(q.group, []).get(q.group)).push(q) : loose.push(q);
+  let body = loose.map(one).join('\n');
+  for (const [gid, qs] of groups) body += `\n<g id="group-${gid}">${qs.map(one).join('')}</g>`;
+  const model = JSON.stringify({
+    v: 1,
+    strands: strands.filter(q => ids.includes(q.id)),
+    blobs: blobs.filter(b => bids.includes(b.id)),
+  });
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x} ${y} ${w} ${h}" width="${w}" height="${h}">
+<metadata id="ligature-model">${esc(model)}</metadata>
+<defs>${defs}</defs>
+${blobBody}<g fill="none">
+${body}
+</g>
+</svg>`;
+  return {svg, w, h};
+}
+
+// --- Excalidraw: every shape becomes a line element of sampled points ---
+const rnd = () => Math.floor(Math.random() * 2 ** 31);
+const rid = () => Math.random().toString(36).slice(2, 12);
+function samplePath(d, stepLen = 2.5) {
+  const out = [];
+  for (const sp of d.split(/(?=M)/).map(t => t.trim()).filter(Boolean)) {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    el.setAttribute('d', sp);
+    svgEl.appendChild(el);
+    const L = el.getTotalLength(), pts = [];
+    for (let t = 0; t < L; t += stepLen) { const q = el.getPointAtLength(t); pts.push([q.x, q.y]); }
+    const q = el.getPointAtLength(L);
+    pts.push([q.x, q.y]);
+    el.remove();
+    if (pts.length > 1) out.push(pts);
+  }
+  return out;
+}
+function exEl(pts, o) {
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const x = Math.min(...xs), y = Math.min(...ys);
+  return {
+    id: rid(), type: 'line', x: f(x), y: f(y), width: f(Math.max(...xs) - x), height: f(Math.max(...ys) - y),
+    angle: 0, strokeColor: o.stroke, backgroundColor: o.bg || 'transparent', fillStyle: 'solid',
+    strokeWidth: o.sw ?? 2, strokeStyle: 'solid', roughness: 0, opacity: 100, groupIds: o.groupIds || [],
+    frameId: null, roundness: null, seed: rnd(), version: 1, versionNonce: rnd(), isDeleted: false,
+    boundElements: null, updated: Date.now(), link: null, locked: false,
+    points: pts.map(p => [f(p[0] - x), f(p[1] - y)]), lastCommittedPoint: null,
+    startBinding: null, endBinding: null, startArrowhead: null, endArrowhead: null,
+  };
+}
+function exText(t, p, color) {
+  return {
+    id: rid(), type: 'text', x: f(p.x - 9), y: f(p.y - 7), width: 18, height: 14, angle: 0,
+    strokeColor: color, backgroundColor: 'transparent', fillStyle: 'solid', strokeWidth: 1, strokeStyle: 'solid',
+    roughness: 0, opacity: 100, groupIds: [], frameId: null, roundness: null, seed: rnd(), version: 1,
+    versionNonce: rnd(), isDeleted: false, boundElements: null, updated: Date.now(), link: null, locked: false,
+    text: t, fontSize: 12, fontFamily: 2, textAlign: 'center', verticalAlign: 'middle',
+    containerId: null, originalText: t, lineHeight: 1.2,
+  };
+}
+function buildExcalidraw() {
+  const {ids, bids} = exportIds();  // placed files stay out of the Excalidraw conversion
+  if (!ids.length && !bids.length) return null;
+  const elements = [];
+  for (const id of bids) {
+    const g = BP.get(id), bb = blobById(id), col = bb.color;
+    if (!g || !g.outline.length) continue;
+    const gid = [rid()], bc = blobPivot(bb), rot = bb.rot || 0;
+    const place = (loop, dx, dy) => {
+      const pts = loop.map(p => { const q = rot ? rotPt({x: p.x + dx, y: p.y + dy}, bc, rot) : {x: p.x + dx, y: p.y + dy}; return [q.x, q.y]; });
+      pts.push(pts[0]);
+      return pts;
+    };
+    // the body, then the lighter inset as its own shape; both fill-only, so nothing gets outlined
+    for (const loop of g.outline) elements.push(exEl(place(loop, 0, 0), {stroke: blobRim(col), bg: blobRim(col), sw: 1, groupIds: gid}));
+    for (const loop of g.inner || []) elements.push(exEl(place(loop, INSET.dx, INSET.dy), {stroke: col, bg: col, sw: 1, groupIds: gid}));
+  }
+  for (const q of strands.filter(q => ids.includes(q.id))) {
+    const g = G.get(q.id), gid = [rid()], rot = q.rot || 0, pv = blobPivot(q);
+    const wp = pts => rot ? pts.map(([x, y]) => { const r = rotPt({x, y}, pv, rot); return [r.x, r.y]; }) : pts;
+    for (const pts of samplePath(g.d)) elements.push(exEl(wp(pts), {stroke: q.color, sw: cfg.w, groupIds: gid}));
+    for (const [a, b] of g.ticks) elements.push(exEl(wp([[a.x, a.y], [b.x, b.y]]), {stroke: q.color, sw: cfg.tw, groupIds: gid}));
+    if (g.lab) {
+      elements.push(exText('5′', toWorld(q, g.lab.p5), q.color));
+      elements.push(exText('3′', toWorld(q, g.lab.p3), q.color));
+    }
+  }
+  return elements;
+}
+const excalidrawFile = els => JSON.stringify({
+  type: 'excalidraw', version: 2, source: 'ligature',
+  elements: els, appState: {gridSize: null, viewBackgroundColor: '#ffffff'}, files: {},
+}, null, 2);
+
+async function pngBlob(o, scale = 3) {
+  const img = new Image();
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(o.svg);
+  await img.decode();
+  const c = document.createElement('canvas');
+  c.width = Math.ceil(o.w * scale); c.height = Math.ceil(o.h * scale);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  return new Promise(res => c.toBlob(res, 'image/png'));
+}
+function download(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+const exportMenu = document.getElementById('exportMenu');
+document.getElementById('export').onclick = () => {
+  const open = exportMenu.style.display === 'flex';
+  pop.style.display = 'none';
+  exportMenu.style.display = open ? 'none' : 'flex';
+  if (!open) placeUnder(exportMenu, document.getElementById('export'));
+};
+exportMenu.addEventListener('click', async e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  exportMenu.style.display = 'none';
+  if (drawing) finishDraw();
+  if (pdraw) finishProtein();
+  const kind = b.dataset.ex;
+  try {
+    if (kind === 'exc' || kind === 'cexc') {
+      const els = buildExcalidraw();
+      if (!els || !els.length) { toast('Nothing to export'); return; }
+      if (kind === 'exc') download(new Blob([excalidrawFile(els)], {type: 'application/json'}), 'ligature.excalidraw');
+      else { await navigator.clipboard.writeText(JSON.stringify({type: 'excalidraw/clipboard', elements: els, files: {}})); toast('Paste into Excalidraw'); }
+      return;
+    }
+    const o = buildSVG();
+    if (!o) { toast('Nothing to export'); return; }
+    if (kind === 'svg') download(new Blob([o.svg], {type: 'image/svg+xml'}), 'ligature.svg');
+    else if (kind === 'png') download(await pngBlob(o), 'ligature.png');
+    else if (kind === 'csvg') { await navigator.clipboard.writeText(o.svg); toast('SVG copied'); }
+    else { await navigator.clipboard.write([new ClipboardItem({'image/png': pngBlob(o)})]); toast('PNG copied'); }
+  } catch (err) { toast('Export failed: ' + err.message); }
+});
+
+// ---------- placing files ----------
+const esc = t => String(t).replace(/[&<>]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;'}[c]));
+function excalidrawToSVG(data) {
+  const els = (data.elements || []).filter(e => e && !e.isDeleted);
+  if (!els.length) throw new Error('no elements in it');
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const e of els) {
+    x0 = Math.min(x0, e.x); y0 = Math.min(y0, e.y);
+    x1 = Math.max(x1, e.x + (e.width || 0)); y1 = Math.max(y1, e.y + (e.height || 0));
+  }
+  const parts = [];
+  for (const e of els) {
+    const stroke = e.strokeColor || '#1e1e1e', sw = e.strokeWidth || 1;
+    const fill = e.backgroundColor && e.backgroundColor !== 'transparent' ? e.backgroundColor : 'none';
+    if (Array.isArray(e.points) && e.points.length > 1) {
+      const pts = e.points.map(p => `${f(e.x + p[0])},${f(e.y + p[1])}`).join(' ');
+      parts.push(`<polyline points="${pts}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>`);
+    } else if (e.type === 'rectangle') {
+      parts.push(`<rect x="${f(e.x)}" y="${f(e.y)}" width="${f(e.width)}" height="${f(e.height)}" rx="${e.roundness ? 8 : 0}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`);
+    } else if (e.type === 'ellipse') {
+      parts.push(`<ellipse cx="${f(e.x + e.width / 2)}" cy="${f(e.y + e.height / 2)}" rx="${f(e.width / 2)}" ry="${f(e.height / 2)}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`);
+    } else if (e.type === 'text') {
+      parts.push(`<text x="${f(e.x)}" y="${f(e.y + (e.fontSize || 16))}" fill="${stroke}" font-size="${e.fontSize || 16}" font-family="system-ui, sans-serif">${esc(e.text || '')}</text>`);
+    }
+  }
+  if (!parts.length) throw new Error('nothing drawable in it');
+  const pad = 8, w = x1 - x0 + 2 * pad, h = y1 - y0 + 2 * pad;
+  return {w, h, svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${f(x0 - pad)} ${f(y0 - pad)} ${f(w)} ${f(h)}" width="${f(w)}" height="${f(h)}">${parts.join('')}</svg>`};
+}
+function svgSize(root) {
+  let w = parseFloat(root.getAttribute('width')), h = parseFloat(root.getAttribute('height'));
+  const v = root.getAttribute('viewBox');
+  if ((!w || !h) && v) { const p = v.trim().split(/[\s,]+/).map(Number); w = p[2]; h = p[3]; }
+  return {w: w || 300, h: h || 300};
+}
+// an SVG this app wrote comes back as real objects instead of a picture
+function importModel(json) {
+  const data = JSON.parse(json);
+  if (!Array.isArray(data.strands) || !Array.isArray(data.blobs)) throw new Error('no model');
+  pushHistory();
+  clearSel();
+  const idmap = new Map();
+  for (const q of data.strands) {
+    const old = q.id, n = {...q, id: nextId++, pair: null, group: q.group};
+    idmap.set(old, n.id);
+    strands.push(n);
+    zAdd('s:' + n.id);
+    sel.add(n.id);
+  }
+  for (const q of data.strands) {  // relink complements among the imported ones
+    if (q.pair == null || !idmap.has(q.pair)) continue;
+    byId(idmap.get(q.id)).pair = idmap.get(q.pair);
+  }
+  for (const b of data.blobs) {
+    const n = {...b, id: nextBid++, nodes: b.nodes.map(x => ({...x}))};
+    blobs.push(n);
+    zAdd('b:' + n.id);
+    selBlob = n.id;
+    selBlobNode = n.nodes[0].id;
+  }
+  if (selBlob != null) sel.clear();
+  render();
+  return (data.strands.length + data.blobs.length) + ' objects';
+}
+function addImport(name, txt) {
+  let svg, w, h;
+  if (!txt.trim().startsWith('{')) {
+    const probe = new DOMParser().parseFromString(txt, 'image/svg+xml');
+    const meta = probe.getElementById && probe.getElementById('ligature-model');
+    if (meta && meta.textContent.trim()) { toast(name + ': ' + importModel(meta.textContent)); return; }
+  }
+  if (txt.trim().startsWith('{')) {
+    const data = JSON.parse(txt);
+    if (!Array.isArray(data.elements)) throw new Error('not an Excalidraw file');
+    ({svg, w, h} = excalidrawToSVG(data));
+  } else {
+    const doc = new DOMParser().parseFromString(txt, 'image/svg+xml');
+    if (doc.querySelector('parsererror') || doc.documentElement.nodeName !== 'svg') throw new Error('not a valid SVG file');
+    ({w, h} = svgSize(doc.documentElement));
+    svg = txt;
+  }
+  pushHistory();
+  const r = host.getBoundingClientRect(), c = draw.point(r.left + r.width / 2, r.top + r.height / 2);
+  const k = Math.min(1, 320 / Math.max(w, h));
+  imports.push({
+    id: nextImp++, name, rot: 0, x: c.x - w * k / 2, y: c.y - h * k / 2, w: w * k, h: h * k,
+    src: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))),
+  });
+  zAdd('m:' + imports.at(-1).id);
+  clearSel();
+  selImport = imports.at(-1).id;
+  render();
+  toast(name);
+}
+const fileInput = document.getElementById('file');
+document.getElementById('upload').onclick = () => fileInput.click();
+fileInput.onchange = async e => {
+  const file = e.target.files[0];
+  fileInput.value = '';
+  if (!file) return;
+  try { addImport(file.name, await file.text()); }
+  catch (err) { toast(file.name + ': ' + err.message); }
+};
+// dropping a file on the canvas places it as well
+for (const ev of ['dragenter', 'dragover']) addEventListener(ev, e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+addEventListener('drop', async e => {
+  e.preventDefault();
+  const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if (!file) return;
+  try { addImport(file.name, await file.text()); }
+  catch (err) { toast(file.name + ': ' + err.message); }
+});
+
+// ---------- misc ----------
+const toastEl = document.getElementById('toast');
+let toastT;
+function toast(msg) {
+  toastEl.textContent = msg; toastEl.style.opacity = 1;
+  clearTimeout(toastT); toastT = setTimeout(() => toastEl.style.opacity = 0, 1800);
+}
+document.addEventListener('click', e => {
+  if (bar.contains(e.target) || pop.contains(e.target) || exportMenu.contains(e.target) || layersEl.contains(e.target)) return;
+  pop.style.display = 'none';
+  exportMenu.style.display = 'none';
+  if (layersOpen) { layersOpen = false; render(); }
+});
+setVB();
+</script>
+</body>
+</html>
