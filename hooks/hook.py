@@ -1,6 +1,8 @@
 import os
 import posixpath
 import re
+from urllib.parse import urlsplit
+from mkdocs.structure.files import File
 
 MD = re.compile(
     r'!\[(?P<alt>[^\]]*)\]\(\s*(?P<path><[^>]+>|[^)\s]+)(?:\s+"[^"]*")?\s*\)'
@@ -49,12 +51,29 @@ def on_page_markdown(markdown, page, **kwargs):
 
 def on_files(files, config):
     """Rewrite output paths of protocol pages to their number (e.g., 21.02/), giving short URLs."""
+    base = urlsplit(config.get("site_url") or "/").path.rstrip("/")
+
+    section_first = {}
     for f in files.documentation_pages():
         m = re.match(r"(\d{2}\.\d{2})\b", f.name)
         if m:
-            f.dest_uri = f"{m.group(1)}/index.html"
-            f.url = f"{m.group(1)}/"
+            num = m.group(1)
+            f.dest_uri = f"{num}/index.html"
+            f.url = f"{num}/"
             f.abs_dest_path = os.path.normpath(
                 os.path.join(config["site_dir"], f.dest_uri)
             )
+            section = num[0]
+            if section not in section_first or num < section_first[section]:
+                section_first[section] = num
+
+    for section, target in section_first.items():
+        url = f"{base}/{target}/"
+        html = (
+            f'<!doctype html><html><head><meta charset="utf-8">'
+            f'<meta http-equiv="refresh" content="0; url={url}">'
+            f'<link rel="canonical" href="{url}">'
+            f"</head><body></body></html>"
+        )
+        files.append(File.generated(config, f"{section}/index.html", content=html))
     return files
