@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang='en'>
+
+<head>
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <title>Exponential decay fit</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --panel2: #f1f3f6;
+      --line: #e2e6ea;
+      --txt: #1c2530;
+      --muted: #667085;
+      --accent: #2563eb;
+      --bad: #dc2626;
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--txt);
+      font: 14px/1.45 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif
+    }
+
+    .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 20px
+    }
+
+    h1 {
+      font-size: 20px;
+      margin: 0 0 16px
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin-bottom: 18px
+    }
+
+    .inputs {
+      display: grid;
+      grid-template-columns: clamp(180px, 34%, 300px) minmax(0, 1fr);
+      gap: 20px
+    }
+
+    @media (max-width: 460px) {
+      .inputs {
+        grid-template-columns: 1fr
+      }
+    }
+
+    /* data grid */
+    .grid-wrap {
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid var(--line);
+      border-radius: 6px
+    }
+
+    #dataGrid {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed
+    }
+
+    #dataGrid th:nth-child(1) {
+      width: 30px
+    }
+
+    #dataGrid th:nth-child(2) {
+      width: 38%
+    }
+
+    #dataGrid th {
+      position: sticky;
+      top: 0;
+      background: var(--panel2);
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 500;
+      padding: 5px 8px;
+      text-align: left;
+      white-space: normal;
+      line-height: 1.25;
+      vertical-align: bottom;
+      z-index: 1
+    }
+
+    #dataGrid td {
+      padding: 0;
+      border-bottom: 1px solid var(--line)
+    }
+
+    #dataGrid td.idx {
+      width: 30px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 11px;
+      cursor: e-resize;
+      user-select: none
+    }
+
+    #dataGrid input {
+      width: 100%;
+      border: none;
+      padding: 5px 8px;
+      font: inherit;
+      font-size: 14px;
+      background: transparent;
+      color: var(--txt);
+      font-variant-numeric: tabular-nums
+    }
+
+    #dataGrid input:focus {
+      outline: 2px solid rgba(37, 99, 235, .4);
+      outline-offset: -2px;
+      background: #f8faff
+    }
+
+    #dataGrid input.bad {
+      background: #fef2f2;
+      color: var(--bad)
+    }
+
+    #dataGrid td.x-col {
+      border-right: 1px solid var(--line)
+    }
+
+    #dataGrid td.sel {
+      background: rgba(37, 99, 235, .13)
+    }
+
+    #dataGrid th[data-c] {
+      cursor: s-resize;
+      user-select: none
+    }
+
+    .grid-wrap:focus {
+      outline: none
+    }
+
+    .grid-wrap.dragging,
+    .grid-wrap.dragging input {
+      user-select: none
+    }
+
+    .grid-wrap.dragging input::selection {
+      background: transparent
+    }
+
+    /* formula */
+    .formula {
+      font: italic 26px/1.2 'Cambria Math', Cambria, 'Times New Roman', serif;
+      margin: 4px 0 14px;
+      color: var(--txt)
+    }
+
+    .formula .n {
+      font-style: normal
+    }
+
+    .formula sup {
+      font-size: 60%
+    }
+
+    .formula sub {
+      font-size: 60%
+    }
+
+    #err {
+      color: var(--bad);
+      font-size: 13px;
+      min-height: 18px;
+      margin-top: 6px
+    }
+
+    table {
+      border-collapse: collapse;
+      font-size: 13px;
+      width: 100%
+    }
+
+    th,
+    td {
+      padding: 5px 8px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      font-variant-numeric: tabular-nums
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 500;
+      width: 45%
+    }
+
+    #results td {
+      white-space: nowrap
+    }
+
+    .phead {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-bottom: 8px
+    }
+
+    .phead .left {
+      margin-right: auto
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--panel2);
+      color: var(--txt);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 13px;
+      cursor: pointer
+    }
+
+    .btn.sm {
+      padding: 3px 10px;
+      font-size: 12px
+    }
+
+    .btn:hover {
+      border-color: var(--accent);
+      color: var(--accent)
+    }
+
+    /* plot */
+    .plotwrap {
+      position: relative
+    }
+
+    #plot {
+      width: 100%;
+      height: auto;
+      display: block
+    }
+
+    #plot text {
+      font-family: -apple-system, Helvetica, Arial, sans-serif
+    }
+
+    #titleInput {
+      position: absolute;
+      border: none;
+      outline: none;
+      background: transparent;
+      box-shadow: none;
+      text-align: center;
+      font-weight: 600;
+      color: var(--txt);
+      padding: 0;
+      margin: 0;
+      font-family: -apple-system, Helvetica, Arial, sans-serif;
+      -webkit-appearance: none;
+      appearance: none;
+      cursor: text;
+      transition: color .12s
+    }
+
+    #titleInput::placeholder {
+      color: #c0c5cc
+    }
+
+    #titleInput:hover:not(:focus) {
+      color: var(--accent)
+    }
+
+    #titlePen {
+      position: absolute;
+      pointer-events: none;
+      color: var(--muted);
+      opacity: .45;
+      transition: opacity .12s, color .12s;
+      line-height: 1
+    }
+
+    .plotwrap:has(#titleInput:hover) #titlePen {
+      opacity: 1;
+      color: var(--accent)
+    }
+
+    .plotwrap:has(#titleInput:focus) #titlePen {
+      opacity: 0
+    }
+
+    .lbl {
+      cursor: move
+    }
+
+    .pen {
+      pointer-events: none
+    }
+
+    .pen text {
+      fill: #667085;
+      opacity: .45;
+      transition: opacity .12s, fill .12s
+    }
+
+    .lbl .pen text {
+      opacity: 0
+    }
+
+    .lbl:hover .pen text {
+      opacity: .55
+    }
+
+    #plot [data-edit-target] {
+      transition: fill .12s
+    }
+
+    #plot [data-edit-target]:hover {
+      fill: var(--accent)
+    }
+
+    [data-edit-target].clickable {
+      cursor: text
+    }
+
+    .svg-edit {
+      position: absolute;
+      z-index: 5;
+      border: none;
+      outline: none;
+      box-shadow: none;
+      background: transparent;
+      color: transparent;
+      caret-color: var(--txt);
+      padding: 0;
+      margin: 0;
+      -webkit-appearance: none;
+      appearance: none;
+      font-family: -apple-system, Helvetica, Arial, sans-serif
+    }
+
+    .svg-edit::selection {
+      color: transparent;
+      background: rgba(37, 99, 235, .25)
+    }
+
+    .lbl .grip {
+      opacity: .55;
+      transition: opacity .12s
+    }
+
+    .lbl:hover .grip {
+      opacity: 1
+    }
+
+    .lbl .close {
+      opacity: 0;
+      cursor: pointer;
+      transition: opacity .12s
+    }
+
+    .lbl:hover .close {
+      opacity: 1
+    }
+
+    #hoverTip {
+      position: fixed;
+      z-index: 10;
+      pointer-events: none;
+      display: none;
+      background: rgba(28, 37, 48, .92);
+      color: #fff;
+      font-size: 12px;
+      line-height: 1.35;
+      padding: 4px 8px;
+      border-radius: 5px;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums
+    }
+  </style>
+</head>
+
+<body>
+  <div class='wrap'>
+    <h1>Exponential decay fit</h1>
+
+    <div class='panel'>
+      <div class='inputs'>
+        <div>
+          <div class='grid-wrap' tabindex='-1'>
+            <table id='dataGrid'>
+              <thead>
+                <tr><th></th><th data-c='x' title='Select column'>Time, s</th><th data-c='y' title='Select column'>Value</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div id='err'></div>
+        </div>
+        <div>
+          <div class='formula'>y <span class='n'>=</span> c <span class='n'>+ (</span>y<sub>max</sub> <span class='n'>&minus;</span> c<span class='n'>)</span> e<sup><span class='n'>&minus;</span>kt</sup></div>
+          <table id='results'></table>
+        </div>
+      </div>
+    </div>
+
+    <div class='panel'>
+      <div class='phead'>
+        <div class='left'><button class='btn sm' id='scaleBtn' title='Toggle x-axis scale'>Scale: log</button></div>
+        <button class='btn' id='resetLayout' title='Restore hidden and moved labels and legend'>↺ Reset layout</button>
+        <button class='btn' id='exportSvg'>⤓ SVG</button>
+        <button class='btn' id='exportPng'>⤓ PNG</button>
+      </div>
+      <div class='plotwrap'>
+        <svg id='plot' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 900 620'></svg>
+        <input type='text' id='titleInput' value='Exponential decay fit' placeholder='Click to add a title' spellcheck='false' title='Click to edit the title'>
+        <span id='titlePen'>&#9998;</span>
+      </div>
+    </div>
+  </div>
+  <div id='hoverTip'></div>
+
+  <script>
+    'use strict';
+    const SVGNS = 'http://www.w3.org/2000/svg';
+    const $ = id => document.getElementById(id);
+    const P = { W: 900, H: 620, mL: 100, mR: 28, mT: 76, mB: 92 };
+    const C = { data: '#1c2530', fit: '#2563eb' };
+    const titleInput = $('titleInput');
+    let scale = 'log';
+    let fitState = null;
+
+    /* model: y = c + (y_max - c) exp(-k t), params [k, c, y_max] */
+    const model = (t, p) => p[1] + (p[2] - p[1]) * Math.exp(-p[0] * t);
+    const PNAMES = ['k', 'c', 'y_max'];
+
+    /* ======================= LINEAR ALGEBRA ======================= */
+    function solve(A, b) {
+      const n = b.length, M = A.map((r, i) => r.concat([b[i]]));
+      for (let i = 0; i < n; i++) {
+        let piv = i;
+        for (let r = i + 1; r < n; r++) if (Math.abs(M[r][i]) > Math.abs(M[piv][i])) piv = r;
+        if (!Number.isFinite(M[piv][i]) || Math.abs(M[piv][i]) < 1e-300) return null;
+        [M[i], M[piv]] = [M[piv], M[i]];
+        for (let r = 0; r < n; r++) {
+          if (r === i) continue;
+          const f = M[r][i] / M[i][i];
+          for (let c = i; c <= n; c++) M[r][c] -= f * M[i][c];
+        }
+      }
+      return M.map((r, i) => r[n] / r[i][i]);
+    }
+    function inv(A) {
+      const n = A.length, cols = [];
+      for (let j = 0; j < n; j++) {
+        const e = new Array(n).fill(0); e[j] = 1;
+        const c = solve(A.map(r => r.slice()), e);
+        if (!c) return null;
+        cols.push(c);
+      }
+      return A.map((_, i) => cols.map(c => c[i]));
+    }
+
+    /* ======================= LEVENBERG-MARQUARDT ======================= */
+    function lmFit(p0, pts) {
+      const n = pts.length, m = p0.length;
+      const ssr = p => {
+        let s = 0;
+        for (const q of pts) { const r = q.y - model(q.x, p); if (!Number.isFinite(r)) return Infinity; s += r * r; }
+        return s;
+      };
+      let p = p0.slice(), cur = ssr(p), lam = 1e-3;
+      if (!Number.isFinite(cur)) return null;
+      const jac = p => {
+        const JtJ = Array.from({ length: m }, () => new Array(m).fill(0)), Jtr = new Array(m).fill(0);
+        for (const q of pts) {
+          const base = model(q.x, p), r = q.y - base, row = new Array(m);
+          for (let j = 0; j < m; j++) {
+            const h = Math.max(1e-9, Math.abs(p[j]) * 1e-6), pp = p.slice();
+            pp[j] += h;
+            row[j] = (model(q.x, pp) - base) / h;
+          }
+          for (let i = 0; i < m; i++) {
+            Jtr[i] += row[i] * r;
+            for (let j = 0; j < m; j++) JtJ[i][j] += row[i] * row[j];
+          }
+        }
+        return { JtJ, Jtr };
+      };
+      for (let it = 0; it < 400; it++) {
+        const { JtJ, Jtr } = jac(p);
+        const A = JtJ.map((r, i) => r.map((v, j) => i === j ? v * (1 + lam) + 1e-14 : v));
+        const d = solve(A, Jtr);
+        if (!d) break;
+        const np = p.map((v, i) => v + d[i]), ns = ssr(np);
+        if (Number.isFinite(ns) && ns < cur) {
+          const done = Math.abs(cur - ns) <= 1e-14 * Math.max(1, cur);
+          p = np; cur = ns; lam = Math.max(lam / 10, 1e-12);
+          if (done) break;
+        } else { lam *= 10; if (lam > 1e13) break; }
+      }
+      const { JtJ } = jac(p), Ci = inv(JtJ);
+      const s2 = n > m ? cur / (n - m) : NaN;
+      const se = Ci ? Ci.map((r, i) => Math.sqrt(Math.max(r[i], 0) * s2)) : p.map(() => NaN);
+      const mean = pts.reduce((s, q) => s + q.y, 0) / n;
+      const sst = pts.reduce((s, q) => s + (q.y - mean) ** 2, 0);
+      const r2 = sst > 0 ? 1 - cur / sst : NaN;
+      const r2adj = n - m - 1 > 0 ? 1 - (1 - r2) * (n - 1) / (n - m - 1) : NaN;
+      return { p, se, r2, r2adj, ssr: cur };
+    }
+
+    function doFit(pts) {
+      const ts = pts.map(p => p.x), ys = pts.map(p => p.y);
+      const tmax = Math.max(...ts) || 1, k0 = 1 / tmax;
+      const c0 = ys[ys.length - 1], a0 = Math.max(...ys);
+      let best = null;
+      for (const s of [1, 0.2, 5, 0.02, 50, 500]) {
+        const r = lmFit([k0 * s, c0, a0], pts);
+        if (r && Number.isFinite(r.ssr) && (!best || r.ssr < best.ssr - 1e-15)) best = r;
+      }
+      return best;
+    }
+
+    /* ======================= DATA GRID ======================= */
+    let rows = [[0, 0.996], [10, 0.996], [30, 1], [60, 0.90], [180, 0.85], [600, 0.70],
+    [1800, 0.60], [6000, 0.40], [18000, 0.20], [60000, 0.05]]
+      .map(([x, y]) => ({ x: String(x), y: String(y) }));
+    const toNum = v => { const t = String(v).trim().replace(',', '.'); return t === '' ? NaN : Number(t); };
+    const isBlank = r => !r.x.trim() && !r.y.trim();
+
+    function splitLine(line) {
+      if (/[\t;]/.test(line)) return line.split(/[\t;]/).map(f => f.trim());
+      const f = line.trim().split(/\s+/);
+      return f.length > 1 ? f : line.split(',').map(f => f.trim());
+    }
+
+    const MIN_ROWS = 20, SPARE = 10;
+    function lastFilled() { for (let i = rows.length - 1; i >= 0; i--) if (!isBlank(rows[i])) return i; return -1; }
+    function makeRow(i) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td class='idx'>${i + 1}</td><td class='x-col'><input data-r='${i}' data-c='x' inputmode='decimal'></td>`
+        + `<td><input data-r='${i}' data-c='y' inputmode='decimal'></td>`;
+      tr.querySelector('[data-c=x]').value = rows[i].x; tr.querySelector('[data-c=y]').value = rows[i].y;
+      return tr;
+    }
+    function ensureRows() {
+      const tb = document.querySelector('#dataGrid tbody');
+      while (rows.length < Math.max(MIN_ROWS, lastFilled() + 1 + SPARE)) {
+        rows.push({ x: '', y: '' }); tb.appendChild(makeRow(rows.length - 1));
+      }
+    }
+    function fitGridHeight() {
+      const wrap = document.querySelector('.grid-wrap'), head = document.querySelector('#dataGrid thead');
+      const row = document.querySelector('#dataGrid tbody tr'); if (!row || !row.offsetHeight) return;
+      wrap.style.maxHeight = (head.offsetHeight + row.offsetHeight * 10.8) + 'px';
+    }
+    function buildGrid(focus) {
+      while (rows.length < Math.max(MIN_ROWS, lastFilled() + 1 + SPARE)) rows.push({ x: '', y: '' });
+      const tb = document.querySelector('#dataGrid tbody'); tb.innerHTML = '';
+      rows.forEach((r, i) => tb.appendChild(makeRow(i)));
+      markBad(); markSel(); fitGridHeight();
+      if (focus) { const el = tb.querySelector(`input[data-r='${focus.r}'][data-c='${focus.c}']`); if (el) { el.focus(); el.select(); } }
+    }
+    function markBad() {
+      document.querySelectorAll('#dataGrid input').forEach(el => {
+        const r = rows[+el.dataset.r], v = el.value.trim();
+        const bad = (v !== '' && !Number.isFinite(toNum(v))) || (v === '' && !isBlank(r));
+        el.classList.toggle('bad', bad);
+      });
+    }
+
+    const tbody = document.querySelector('#dataGrid tbody'), gridWrap = document.querySelector('.grid-wrap');
+    const COLS = ['x', 'y'];
+    let sel = null, selDrag = null;
+    const selBox = () => sel && {
+      r0: Math.min(sel.a.r, sel.b.r), r1: Math.max(sel.a.r, sel.b.r),
+      c0: Math.min(sel.a.c, sel.b.c), c1: Math.max(sel.a.c, sel.b.c)
+    };
+    const isMulti = () => { const b = selBox(); return !!b && (b.r1 > b.r0 || b.c1 > b.c0); };
+    function markSel() {
+      const b = isMulti() ? selBox() : null;
+      tbody.querySelectorAll('input').forEach(el => {
+        const r = +el.dataset.r, c = COLS.indexOf(el.dataset.c);
+        el.parentElement.classList.toggle('sel', !!b && r >= b.r0 && r <= b.r1 && c >= b.c0 && c <= b.c1);
+      });
+    }
+    function setSel(a, b) { sel = a ? { a, b: b || a } : null; markSel(); }
+    function cellOf(target) {
+      const td = target.closest && target.closest('td'); if (!td || !tbody.contains(td)) return null;
+      const tr = td.parentElement, r = [...tbody.children].indexOf(tr);
+      if (td.classList.contains('idx')) return { r, c: -1 };
+      const inp = td.querySelector('input'); return inp ? { r, c: COLS.indexOf(inp.dataset.c) } : null;
+    }
+    const inputAt = cell => tbody.querySelector(`input[data-r='${cell.r}'][data-c='${COLS[cell.c]}']`);
+    tbody.addEventListener('mousedown', e => {
+      const cell = cellOf(e.target); if (!cell || e.button !== 0) return;
+      if (cell.c === -1) {
+        e.preventDefault(); gridWrap.focus();
+        const a = e.shiftKey && sel ? { r: sel.a.r, c: 0 } : { r: cell.r, c: 0 };
+        setSel(a, { r: cell.r, c: 1 }); selDrag = { rows: true, moved: true };
+        return;
+      }
+      const inp = inputAt(cell), editing = document.activeElement === inp;
+      if (e.shiftKey && sel) { e.preventDefault(); gridWrap.focus(); setSel(sel.a, cell); selDrag = { rows: false, moved: true }; return; }
+      if (!editing) e.preventDefault();
+      setSel(cell); selDrag = { rows: false, moved: false, cell, editing };
+    });
+    window.addEventListener('mousemove', e => {
+      if (!selDrag || !sel) return;
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const cell = el && cellOf(el); if (!cell) return;
+      const b = selDrag.rows ? { r: cell.r, c: 1 } : { r: cell.r, c: Math.max(cell.c, 0) };
+      if (b.r === sel.b.r && b.c === sel.b.c) return;
+      setSel(sel.a, b);
+      if (isMulti() && !selDrag.moved) { selDrag.moved = true; gridWrap.classList.add('dragging'); }
+      if (selDrag.moved) {
+        const ae = document.activeElement;
+        if (ae && ae.tagName === 'INPUT' && gridWrap.contains(ae)) { const n = ae.selectionStart; ae.setSelectionRange(n, n); ae.blur(); }
+        if (document.activeElement !== gridWrap) gridWrap.focus();
+        window.getSelection().removeAllRanges();
+        e.preventDefault();
+      }
+    });
+    window.addEventListener('mouseup', () => {
+      if (selDrag && !selDrag.moved && !selDrag.rows && !selDrag.editing) {
+        const inp = inputAt(selDrag.cell);
+        if (inp) { inp.focus(); const n = inp.value.length; inp.setSelectionRange(n, n); }
+      }
+      selDrag = null; gridWrap.classList.remove('dragging');
+    });
+    document.querySelectorAll('#dataGrid th[data-c]').forEach(th => th.addEventListener('mousedown', e => {
+      e.preventDefault(); gridWrap.focus();
+      const c = COLS.indexOf(th.dataset.c), last = Math.max(lastFilled(), 0);
+      if (e.shiftKey && sel) setSel({ r: 0, c: sel.a.c }, { r: last, c });
+      else setSel({ r: 0, c }, { r: last, c });
+    }));
+    document.addEventListener('mousedown', e => { if (!gridWrap.contains(e.target)) setSel(null); });
+    gridWrap.addEventListener('keydown', e => {
+      if (!isMulti()) return;
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        const b = selBox();
+        for (let r = b.r0; r <= b.r1; r++) for (let c = b.c0; c <= b.c1; c++) rows[r][COLS[c]] = '';
+        buildGrid(); gridWrap.focus(); render();
+      } else if (e.key === 'Escape') setSel(null);
+    });
+    document.addEventListener('copy', e => {
+      if (!isMulti() || !gridWrap.contains(document.activeElement)) return;
+      const b = selBox(), out = [];
+      for (let r = b.r0; r <= b.r1; r++) { const line = []; for (let c = b.c0; c <= b.c1; c++) line.push(rows[r][COLS[c]]); out.push(line.join('\t')); }
+      e.clipboardData.setData('text/plain', out.join('\n')); e.preventDefault();
+    });
+    tbody.addEventListener('input', e => {
+      const el = e.target; if (el.tagName !== 'INPUT') return;
+      rows[+el.dataset.r][el.dataset.c] = el.value;
+      ensureRows(); markBad(); render();
+    });
+    tbody.addEventListener('keydown', e => {
+      const el = e.target; if (el.tagName !== 'INPUT') return;
+      const i = +el.dataset.r, c = el.dataset.c;
+      let t = null;
+      if (e.key === 'Enter' || e.key === 'ArrowDown') t = { r: Math.min(i + 1, rows.length - 1), c };
+      else if (e.key === 'ArrowUp') t = { r: Math.max(i - 1, 0), c };
+      if (t) { e.preventDefault(); const n = tbody.querySelector(`input[data-r='${t.r}'][data-c='${t.c}']`); n.focus(); n.select(); }
+    });
+    tbody.addEventListener('paste', e => {
+      const el = e.target; if (el.tagName !== 'INPUT') return;
+      const text = (e.clipboardData || window.clipboardData).getData('text');
+      if (!/\s|;/.test(text.trim())) return;
+      e.preventDefault();
+      const lines = text.replace(/\r/g, '').split('\n').filter(l => l.trim() !== '');
+      let i = +el.dataset.r; const startCol = el.dataset.c;
+      for (const line of lines) {
+        const f = splitLine(line);
+        if (f.length && !Number.isFinite(toNum(f[0]))) continue;
+        if (!rows[i]) rows[i] = { x: '', y: '' };
+        if (startCol === 'x') { rows[i].x = f[0] ?? ''; if (f.length > 1) rows[i].y = f[1]; }
+        else rows[i].y = f[0] ?? '';
+        i++;
+      }
+      buildGrid({ r: Math.min(i, rows.length - 1), c: startCol }); render();
+    });
+
+    /* ======================= SVG HELPERS ======================= */
+    function E(tag, attrs, parent) {
+      const e = document.createElementNS(SVGNS, tag);
+      for (const k in attrs) e.setAttribute(k, attrs[k]);
+      if (parent) parent.appendChild(e);
+      return e;
+    }
+    function T(parent, x, y, txt, attrs = {}) {
+      const t = E('text', Object.assign({ x, y, 'font-size': 24, fill: '#1c2530' }, attrs), parent);
+      t.textContent = txt; return t;
+    }
+    function powTick(parent, x, y, exp) {   // 10 with a superscript exponent
+      const t = E('text', { x, y, 'font-size': 24, fill: '#1c2530', 'text-anchor': 'middle' }, parent);
+      E('tspan', {}, t).textContent = '10';
+      const s = E('tspan', { 'font-size': 16, dy: -10 }, t);
+      s.textContent = String(exp);
+      return t;
+    }
+    const lblOff = {}, hidden = {};
+    const TEXT_DEFAULTS = { xlab: 'Time, s', ylab: 'Substrate fraction', legData: 'Data', legFit: 'Fit' };
+    const texts = Object.assign({}, TEXT_DEFAULTS);
+    let editing = null;
+
+    function addPen(parent, key, x, y, opts = {}) {
+      if (editing && editing.key === key) return null;
+      const g = E('g', { class: 'pen hover-el', transform: `translate(${x} ${y})${opts.rotate ? ' rotate(-90)' : ''}` }, parent);
+      T(g, 0, 0, '\u270e', { 'font-size': opts.size || 20, 'text-anchor': 'middle', 'dominant-baseline': 'central' });
+      return g;
+    }
+    function movable(parent, key) {
+      const off = lblOff[key] || { dx: 0, dy: 0 };
+      const g = E('g', { class: 'lbl', transform: `translate(${off.dx} ${off.dy})` }, parent);
+      g.dataset.key = key;
+      E('title', {}, g).textContent = 'Click text to edit, drag to move';
+      return g;
+    }
+    function addGrip(g, x, y, h) {
+      const w = 14, c = E('g', { class: 'grip hover-el', transform: `translate(${x - w - 2} ${y})` }, g);
+      E('rect', { width: w, height: h, rx: 3, fill: '#f1f3f6', stroke: '#98a2b3' }, c);
+      for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++)
+        E('circle', { cx: 4.5 + j * 5, cy: h / 2 + (i - 1) * 5, r: 1.4, fill: '#667085' }, c);
+    }
+    function addClose(g, x, y) {
+      const c = E('g', { class: 'close hover-el', transform: `translate(${x} ${y})` }, g);
+      E('title', {}, c).textContent = 'Hide';
+      E('circle', { r: 10, fill: '#fff', stroke: '#98a2b3' }, c);
+      E('path', { d: 'M-4 -4L4 4M4 -4L-4 4', stroke: '#475467', 'stroke-width': 1.5, 'stroke-linecap': 'round' }, c);
+    }
+    const SUPS = { '-': '\u207b', 0: '\u2070', 1: '\u00b9', 2: '\u00b2', 3: '\u00b3', 4: '\u2074', 5: '\u2075', 6: '\u2076', 7: '\u2077', 8: '\u2078', 9: '\u2079' };
+    const sup = n => String(n).split('').map(c => SUPS[c] || c).join('');
+    const fmtNum = v => {
+      if (!Number.isFinite(v)) return 'n/a';
+      const a = Math.abs(v);
+      if (a !== 0 && (a < 1e-3 || a >= 1e5)) {
+        const [mant, ex] = v.toExponential(2).split('e');
+        return `${+mant}\u00d710${sup(+ex)}`;
+      }
+      return String(+v.toPrecision(4));
+    };
+    const fmtT = v => v === 0 ? '0' : fmtNum(v);
+    function niceStep(raw) {
+      const e = Math.pow(10, Math.floor(Math.log10(Math.abs(raw) || 1)));
+      const f = raw / e;
+      return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * e;
+    }
+
+    /* ======================= PLOT ======================= */
+    function getPoints() {
+      const pts = [];
+      rows.forEach((r, i) => {
+        if (isBlank(r)) return;
+        const x = toNum(r.x), y = toNum(r.y);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error(`Row ${i + 1} needs two numbers.`);
+        if (x < 0) throw new Error(`Row ${i + 1}: time must be >= 0.`);
+        pts.push({ x, y });
+      });
+      if (pts.length < 3) throw new Error('Need at least 3 points.');
+      return pts.sort((a, b) => a.x - b.x);
+    }
+
+    function render() {
+      const svg = $('plot'); svg.innerHTML = '';
+      let pts;
+      try { pts = getPoints(); $('err').textContent = ''; }
+      catch (e) { $('err').textContent = e.message; fitState = null; $('results').innerHTML = ''; return; }
+
+      const res = doFit(pts);
+      if (!res) { $('err').textContent = 'Fit did not converge.'; fitState = null; $('results').innerHTML = ''; return; }
+      const p = res.p;
+
+      const xs = pts.map(q => q.x), ys = pts.map(q => q.y);
+      const xmax = Math.max(...xs), hasZero = xs.some(v => v === 0);
+      const nz = xs.filter(v => v > 0);
+      const useLog = scale === 'log' && nz.length > 0;
+      const xminNZ = nz.length ? Math.min(...nz) : 1;
+      const dec = Math.max(1, Math.log10(xmax / xminNZ));
+      const L0 = Math.log10(xminNZ) - 0.08 * dec, L1 = Math.log10(xmax) + 0.08 * dec;
+
+      const yvals = ys.concat(pts.map(q => model(q.x, p)).filter(Number.isFinite));
+      const ymin = Math.min(0, ...yvals), ymax = Math.max(...yvals), yr = (ymax - ymin) || 1;
+      const Y0 = ymin - 0.05 * yr, Y1 = ymax + 0.05 * yr;
+
+      const pW = P.W - P.mL - P.mR, pH = P.H - P.mT - P.mB;
+      const zoneW = (useLog && hasZero) ? 64 : 0;
+      const cW = pW - zoneW;
+      const sx = x => useLog
+        ? (x <= 0 ? P.mL + zoneW / 2 : P.mL + zoneW + (Math.log10(x) - L0) / (L1 - L0) * cW)
+        : P.mL + (x / (xmax || 1)) * pW;
+      const x2v = px => useLog
+        ? Math.pow(10, L0 + (px - P.mL - zoneW) / cW * (L1 - L0))
+        : (px - P.mL) / pW * (xmax || 1);
+      const sy = y => P.mT + (1 - (y - Y0) / (Y1 - Y0)) * pH;
+
+      E('rect', { x: 0, y: 0, width: P.W, height: P.H, fill: '#fff' }, svg);
+      const defs = E('defs', {}, svg), cp = E('clipPath', { id: 'clip' }, defs);
+      E('rect', { x: P.mL, y: P.mT, width: pW, height: pH }, cp);
+
+      const yticks = [];
+      { const step = niceStep((Y1 - Y0) / 6), start = Math.ceil(Y0 / step) * step;
+        for (let v = start; v <= Y1 + step / 2; v += step) yticks.push(+v.toPrecision(12)); }
+      const linTicks = [];
+      if (!useLog) { const step = niceStep((xmax || 1) / 6);
+        for (let v = 0; v <= xmax + step / 2; v += step) linTicks.push(+v.toPrecision(12)); }
+
+      // grid
+      const grid = E('g', { stroke: '#d3d3d3', 'stroke-width': 0.6, 'stroke-dasharray': '4 3' }, svg);
+      if (useLog) {
+        for (let d = Math.floor(L0); d <= Math.ceil(L1); d++)
+          for (let m = 1; m <= 9; m++) {
+            const v = m * Math.pow(10, d), lv = Math.log10(v);
+            if (lv < L0 || lv > L1) continue;
+            E('line', { x1: sx(v), x2: sx(v), y1: P.mT, y2: P.mT + pH, opacity: m === 1 ? 1 : 0.45 }, grid);
+          }
+      } else for (const v of linTicks) E('line', { x1: sx(v), x2: sx(v), y1: P.mT, y2: P.mT + pH }, grid);
+      for (const v of yticks) E('line', { x1: P.mL, x2: P.mL + pW, y1: sy(v), y2: sy(v) }, grid);
+
+      // axes box + ticks
+      E('rect', { x: P.mL, y: P.mT, width: pW, height: pH, fill: 'none', stroke: '#1c2530', 'stroke-width': 1 }, svg);
+      const tick = x => E('line', { x1: x, x2: x, y1: P.mT + pH, y2: P.mT + pH + 5, stroke: '#1c2530' }, svg);
+      if (useLog) {
+        if (hasZero) { tick(sx(0)); T(svg, sx(0), P.mT + pH + 32, '0', { 'text-anchor': 'middle' }); }
+        for (let d = Math.ceil(L0); d <= Math.floor(L1); d++) {
+          const v = Math.pow(10, d);
+          tick(sx(v)); powTick(svg, sx(v), P.mT + pH + 32, d);
+        }
+      } else for (const v of linTicks) { tick(sx(v)); T(svg, sx(v), P.mT + pH + 32, fmtT(v), { 'text-anchor': 'middle' }); }
+      for (const v of yticks) {
+        E('line', { x1: P.mL - 5, x2: P.mL, y1: sy(v), y2: sy(v), stroke: '#1c2530' }, svg);
+        T(svg, P.mL - 10, sy(v) + 8, fmtNum(v), { 'text-anchor': 'end' });
+      }
+      // axis break between 0 and the log region
+      if (useLog && hasZero) {
+        const bx = P.mL + zoneW * 0.78, by = P.mT + pH;
+        E('rect', { x: bx - 6, y: by - 1.5, width: 12, height: 4, fill: '#fff' }, svg);
+        for (const off of [-5, 5])
+          E('path', { d: `M${bx + off - 6} ${by + 7}L${bx + off + 6} ${by - 7}`, stroke: '#1c2530', 'stroke-width': 1.6 }, svg);
+      }
+
+      const xl = T(svg, P.mL + pW / 2, P.H - 16, texts.xlab, { 'text-anchor': 'middle', 'font-size': 26, 'data-edit-target': 'xlab', class: 'clickable' });
+      addPen(svg, 'xlab', P.mL + pW / 2 + xl.getComputedTextLength() / 2 + 16, P.H - 24);
+      const ycy = P.mT + pH / 2;
+      const yl = T(svg, 28, ycy, texts.ylab, { 'text-anchor': 'middle', 'font-size': 26, transform: `rotate(-90 28 ${ycy})`, 'data-edit-target': 'ylab', class: 'clickable' });
+      addPen(svg, 'ylab', 20, ycy - yl.getComputedTextLength() / 2 - 16, { rotate: true });
+      T(svg, P.mL + pW / 2, 48, titleInput.value, { 'text-anchor': 'middle', 'font-size': 30, 'font-weight': 600, class: 'title-el', display: 'none' });
+
+      const plot = E('g', { 'clip-path': 'url(#clip)' }, svg);
+
+      // fitted curve
+      const N = 500;
+      let d = '';
+      for (let i = 0; i < N; i++) {
+        const x = useLog ? Math.pow(10, L0 + (L1 - L0) * i / (N - 1)) : (xmax || 1) * i / (N - 1);
+        const y = model(x, p);
+        if (!Number.isFinite(y)) continue;
+        d += (d ? 'L' : 'M') + sx(x).toFixed(2) + ' ' + sy(y).toFixed(2);
+      }
+      if (useLog && hasZero) {
+        const x1 = Math.pow(10, L0);
+        E('line', { x1: sx(0), y1: sy(model(0, p)), x2: sx(x1), y2: sy(model(x1, p)), stroke: C.fit, 'stroke-width': 2.5, 'stroke-dasharray': '2 4' }, plot);
+        E('circle', { cx: sx(0), cy: sy(model(0, p)), r: 4, fill: C.fit }, plot);
+      }
+      E('path', { d, fill: 'none', stroke: C.fit, 'stroke-width': 3 }, plot);
+
+      // data points
+      for (const q of pts) E('circle', { cx: sx(q.x), cy: sy(q.y), r: 8, fill: C.data }, plot);
+
+      // legend (lower left)
+      if (!hidden.legend) {
+        const lg = movable(svg, 'legend'), lx = P.mL + 16 + zoneW, ly = P.mT + pH - 100;
+        const lbg = E('rect', { x: lx - 10, y: ly - 10, rx: 4, fill: '#fff', 'fill-opacity': 0.88, stroke: '#d0d5dd' }, lg);
+        E('circle', { cx: lx + 16, cy: ly + 18, r: 8, fill: C.data }, lg);
+        const td = T(lg, lx + 44, ly + 26, texts.legData, { 'data-edit-target': 'legData' });
+        E('line', { x1: lx, x2: lx + 32, y1: ly + 62, y2: ly + 62, stroke: C.fit, 'stroke-width': 3 }, lg);
+        const tf = T(lg, lx + 44, ly + 70, texts.legFit, { 'data-edit-target': 'legFit' });
+        const right = Math.max(lx + 44 + td.getComputedTextLength(), lx + 44 + tf.getComputedTextLength());
+        const lw = right - (lx - 10) + 40, lh = 96;
+        lbg.setAttribute('width', lw); lbg.setAttribute('height', lh);
+        addPen(lg, 'legData', lx + 44 + td.getComputedTextLength() + 16, ly + 18, { size: 18 });
+        addPen(lg, 'legFit', lx + 44 + tf.getComputedTextLength() + 16, ly + 62, { size: 18 });
+        addGrip(lg, lx - 10, ly - 10, lh);
+        addClose(lg, lx - 10 + lw, ly - 10);
+      }
+
+      fitState = { pts, p, sx, sy, x2v, pW, pH, useLog, L0, L1, xmax, zoneW };
+      fitState.hLine = E('line', { class: 'hover-el', y1: P.mT, y2: P.mT + pH, stroke: '#475467', 'stroke-width': 1, 'pointer-events': 'none', display: 'none' }, svg);
+      fitState.hDot = E('circle', { class: 'hover-el', r: 4, fill: '#000', stroke: '#fff', 'stroke-width': 1.5, 'pointer-events': 'none', display: 'none' }, svg);
+
+      // results
+      const pm = (v, s) => Number.isFinite(s) ? `${fmtNum(v)} \u00b1 ${fmtNum(s)}` : fmtNum(v);
+      const half = p[0] > 0 ? Math.LN2 / p[0] : NaN;
+      $('results').innerHTML = `
+        <tr><th>Rate constant <i>k</i>, s\u207b\u00b9</th><td>${pm(p[0], res.se[0])}</td></tr>
+        <tr><th>Half-life <i>t</i><sub>1/2</sub>, s</th><td>${fmtNum(half)}</td></tr>
+        <tr><th>Floor <i>c</i></th><td>${pm(p[1], res.se[1])}</td></tr>
+        <tr><th>Amplitude <i>y</i><sub>max</sub></th><td>${pm(p[2], res.se[2])}</td></tr>
+        <tr><th>Goodness of fit <i>R</i>\u00b2</th><td>${Number.isFinite(res.r2) ? res.r2.toFixed(4) : 'n/a'}</td></tr>
+        <tr><th>Adj. <i>R</i>\u00b2</th><td>${Number.isFinite(res.r2adj) ? res.r2adj.toFixed(4) : 'n/a'}</td></tr>`;
+      placeEditor();
+    }
+
+    /* ======================= HOVER ======================= */
+    const tip = $('hoverTip'), svgEl = $('plot');
+    function hideHover() {
+      tip.style.display = 'none';
+      if (fitState) { fitState.hLine.setAttribute('display', 'none'); fitState.hDot.setAttribute('display', 'none'); }
+    }
+    svgEl.addEventListener('pointermove', ev => {
+      const F = fitState;
+      if (!F || ev.buttons || lblDrag) { hideHover(); return; }
+      const r = svgEl.getBoundingClientRect(), s = P.W / r.width;
+      const x = (ev.clientX - r.left) * s, y = (ev.clientY - r.top) * s;
+      if (x < P.mL || x > P.mL + F.pW || y < P.mT || y > P.mT + F.pH) { hideHover(); return; }
+      const R = 12 * s;
+      let bp = null, bd = R;
+      for (const q of F.pts) { const d = Math.hypot(F.sx(q.x) - x, F.sy(q.y) - y); if (d <= bd) { bd = d; bp = q; } }
+      let best = null, cd = R;
+      if (!bp) for (let px = x - R; px <= x + R; px += 0.5) {
+        if (px < P.mL + F.zoneW) continue;
+        const xv = F.x2v(px), yv = model(xv, F.p);
+        if (!Number.isFinite(yv)) continue;
+        const d = Math.hypot(px - x, F.sy(yv) - y);
+        if (d <= cd) { cd = d; best = { px, xv, yv }; }
+      }
+      let px, py, html;
+      if (bp) {
+        px = F.sx(bp.x); py = F.sy(bp.y);
+        html = `<b>${texts.legData}</b><br>t = ${fmtT(bp.x)}<br>y = ${fmtNum(bp.y)}<br>${texts.legFit} = ${fmtNum(model(bp.x, F.p))}`;
+      } else if (best) {
+        px = best.px; py = F.sy(best.yv);
+        html = `<b>${texts.legFit}</b><br>t = ${fmtT(best.xv)}<br>y = ${fmtNum(best.yv)}`;
+      } else { hideHover(); return; }
+      F.hLine.setAttribute('x1', px); F.hLine.setAttribute('x2', px); F.hLine.setAttribute('display', 'inline');
+      F.hDot.setAttribute('cx', px); F.hDot.setAttribute('cy', py); F.hDot.setAttribute('display', 'inline');
+      tip.innerHTML = html; tip.style.display = 'block';
+      const w = tip.offsetWidth, h = tip.offsetHeight;
+      let tx = ev.clientX + 14, ty = ev.clientY + 14;
+      if (tx + w > window.innerWidth - 4) tx = ev.clientX - w - 14;
+      if (ty + h > window.innerHeight - 4) ty = ev.clientY - h - 14;
+      tip.style.left = tx + 'px'; tip.style.top = ty + 'px';
+    });
+    svgEl.addEventListener('pointerleave', hideHover);
+
+    /* ======================= EXPORT ======================= */
+    const safe = s => (String(s).replace(/[\/\\:*?"<>|]+/g, '_').trim() || 'fit');
+    function svgString() {
+      const clone = svgEl.cloneNode(true);
+      clone.querySelectorAll('.hover-el, .lbl > title').forEach(n => n.remove());
+      clone.querySelectorAll('.title-el').forEach(n => n.removeAttribute('display'));
+      clone.setAttribute('width', P.W); clone.setAttribute('height', P.H);
+      const st = document.createElementNS(SVGNS, 'style');
+      st.textContent = 'text{font-family:-apple-system,Helvetica,Arial,sans-serif}';
+      clone.insertBefore(st, clone.firstChild);
+      return new XMLSerializer().serializeToString(clone);
+    }
+    function download(href, name) { const a = document.createElement('a'); a.href = href; a.download = name; a.click(); }
+    $('exportSvg').addEventListener('click', () => {
+      const url = URL.createObjectURL(new Blob([svgString()], { type: 'image/svg+xml;charset=utf-8' }));
+      download(url, safe(titleInput.value) + '.svg'); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+    $('exportPng').addEventListener('click', () => {
+      const url = URL.createObjectURL(new Blob([svgString()], { type: 'image/svg+xml;charset=utf-8' }));
+      const img = new Image();
+      img.onload = () => {
+        const sc = 3, c = document.createElement('canvas'); c.width = P.W * sc; c.height = P.H * sc;
+        const ctx = c.getContext('2d'); ctx.scale(sc, sc); ctx.drawImage(img, 0, 0, P.W, P.H);
+        URL.revokeObjectURL(url); download(c.toDataURL('image/png'), safe(titleInput.value) + '.png');
+      };
+      img.src = url;
+    });
+
+    /* ======================= IN-PLACE TEXT EDITING ======================= */
+    function caretIndexAt(key, cx, cy) {
+      const el = svgEl.querySelector(`[data-edit-target='${key}']`);
+      const n = texts[key].length;
+      if (!el || cx == null) return n;
+      const text = el.closest('text');
+      const p = svgEl.createSVGPoint(); p.x = cx; p.y = cy;
+      const lp = p.matrixTransform(text.getScreenCTM().inverse());
+      let i = text.getCharNumAtPosition(lp);
+      if (i < 0) {
+        const ext0 = n ? text.getExtentOfChar(0) : null;
+        return ext0 && lp.x < ext0.x ? 0 : n;
+      }
+      const ext = text.getExtentOfChar(i);
+      if (lp.x > ext.x + ext.width / 2) i++;
+      return Math.min(i, n);
+    }
+    function startEdit(key, cx, cy) {
+      const caret = caretIndexAt(key, cx, cy);
+      if (editing) finishEdit(true);
+      const inp = document.createElement('input');
+      inp.className = 'svg-edit'; inp.value = texts[key]; inp.spellcheck = false;
+      editing = { key, inp, orig: texts[key] };
+      document.querySelector('.plotwrap').appendChild(inp);
+      inp.addEventListener('input', () => { texts[key] = inp.value; render(); });
+      inp.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); finishEdit(true); }
+        else if (e.key === 'Escape') { e.preventDefault(); finishEdit(false); }
+      });
+      inp.addEventListener('blur', () => finishEdit(true));
+      render();
+      setTimeout(() => { inp.focus(); inp.setSelectionRange(caret, caret); }, 0);
+    }
+    function finishEdit(ok) {
+      if (!editing) return;
+      const { key, inp, orig } = editing; editing = null;
+      texts[key] = ok ? (inp.value.trim() || TEXT_DEFAULTS[key]) : orig;
+      inp.remove(); render();
+    }
+    const measureCtx = document.createElement('canvas').getContext('2d');
+    function placeEditor() {
+      if (!editing) return;
+      const { key, inp } = editing;
+      const el = svgEl.querySelector(`[data-edit-target='${key}']`); if (!el) return;
+      const text = el.closest('text'), wrap = document.querySelector('.plotwrap');
+      const wr = wrap.getBoundingClientRect(), k = svgEl.getBoundingClientRect().width / P.W;
+      const fs = (+text.getAttribute('font-size') || 24) * k;
+      const ff = getComputedStyle(text).fontFamily;
+      inp.style.fontFamily = ff;
+      measureCtx.font = `${fs}px ${ff}`;
+      const w = Math.max(measureCtx.measureText(inp.value).width, 4) + 3;
+      const L = Math.round(fs * 1.3), m = measureCtx.measureText('Hg');
+      const A = m.fontBoundingBoxAscent, D = m.fontBoundingBoxDescent;
+      const bOff = Number.isFinite(A) && Number.isFinite(D) ? (L - (A + D)) / 2 + A : fs * 0.93;
+      const anchor = text.getAttribute('text-anchor') || 'start';
+      const p = svgEl.createSVGPoint(); p.x = +text.getAttribute('x'); p.y = +text.getAttribute('y');
+      const sp = p.matrixTransform(text.getScreenCTM());
+      if (key === 'ylab') {
+        const x = sp.x - wr.left, y = sp.y - wr.top;
+        Object.assign(inp.style, { left: (x - (bOff - L / 2) - w / 2) + 'px', top: (y - L / 2) + 'px', transformOrigin: 'center', transform: 'rotate(-90deg)' });
+      } else {
+        const x = sp.x - wr.left - (anchor === 'middle' ? w / 2 : anchor === 'end' ? w : 0);
+        Object.assign(inp.style, { left: x + 'px', top: (sp.y - wr.top - bOff) + 'px', transform: 'none' });
+      }
+      Object.assign(inp.style, { width: w + 'px', height: L + 'px', fontSize: fs + 'px', lineHeight: L + 'px' });
+    }
+
+    /* label dragging */
+    let lblDrag = null;
+    svgEl.addEventListener('pointerdown', ev => {
+      const ax = ev.target.closest('.clickable[data-edit-target]');
+      if (ax) { ev.preventDefault(); hideHover(); startEdit(ax.dataset.editTarget, ev.clientX, ev.clientY); return; }
+      const g = ev.target.closest('.lbl'); if (!g) return;
+      ev.preventDefault(); hideHover();
+      if (ev.target.closest('.close')) { hidden[g.dataset.key] = true; render(); return; }
+      const key = g.dataset.key, o = lblOff[key] || { dx: 0, dy: 0 };
+      const tEl = ev.target.closest('[data-edit-target]');
+      lblDrag = { key, g, sx: ev.clientX, sy: ev.clientY, dx: o.dx, dy: o.dy, editKey: tEl ? tEl.dataset.editTarget : null, moved: false };
+      try { svgEl.setPointerCapture(ev.pointerId); } catch (_) { }
+    });
+    svgEl.addEventListener('pointermove', ev => {
+      if (!lblDrag) return;
+      const k = P.W / svgEl.getBoundingClientRect().width;
+      if (Math.hypot(ev.clientX - lblDrag.sx, ev.clientY - lblDrag.sy) > 3) lblDrag.moved = true;
+      if (!lblDrag.moved) return;
+      const o = { dx: lblDrag.dx + (ev.clientX - lblDrag.sx) * k, dy: lblDrag.dy + (ev.clientY - lblDrag.sy) * k };
+      lblOff[lblDrag.key] = o; lblDrag.g.setAttribute('transform', `translate(${o.dx} ${o.dy})`);
+    });
+    svgEl.addEventListener('pointerup', () => {
+      const d = lblDrag; lblDrag = null;
+      if (d && !d.moved && d.editKey) startEdit(d.editKey, d.sx, d.sy);
+    });
+    svgEl.addEventListener('dblclick', ev => {
+      const gr = ev.target.closest('.grip'), g = gr && gr.closest('.lbl'); if (!g) return;
+      delete lblOff[g.dataset.key]; g.setAttribute('transform', 'translate(0 0)');
+    });
+
+    /* ======================= TITLE + WIRING ======================= */
+    function placeTitle() {
+      const r = svgEl.getBoundingClientRect(), k = r.width / P.W;
+      if (!r.width) return;
+      titleInput.style.left = (P.mL * k) + 'px';
+      titleInput.style.width = ((P.W - P.mL - P.mR) * k) + 'px';
+      titleInput.style.top = (20 * k) + 'px';
+      titleInput.style.height = (38 * k) + 'px';
+      titleInput.style.fontSize = (30 * k) + 'px';
+      placePen();
+    }
+    function placePen() {
+      const r = svgEl.getBoundingClientRect(), k = r.width / P.W; if (!r.width) return;
+      const cs = getComputedStyle(titleInput);
+      measureCtx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+      const w = measureCtx.measureText(titleInput.value || titleInput.placeholder).width;
+      const pen = $('titlePen'), cx = (P.mL + (P.W - P.mL - P.mR) / 2) * k;
+      pen.style.fontSize = (24 * k) + 'px';
+      pen.style.left = Math.min(cx + w / 2 + 6 * k, (P.W - P.mR - 24) * k) + 'px';
+      pen.style.top = (27 * k) + 'px';
+    }
+    new ResizeObserver(placeTitle).observe(svgEl);
+    new ResizeObserver(() => fitGridHeight()).observe(document.querySelector('#dataGrid thead'));
+    titleInput.addEventListener('input', () => { const t = svgEl.querySelector('.title-el'); if (t) t.textContent = titleInput.value; placePen(); });
+    titleInput.addEventListener('keydown', e => { if (e.key === 'Enter') titleInput.blur(); });
+
+    $('scaleBtn').addEventListener('click', () => {
+      scale = scale === 'log' ? 'linear' : 'log';
+      $('scaleBtn').textContent = 'Scale: ' + scale;
+      render();
+    });
+    $('resetLayout').addEventListener('click', () => {
+      for (const k in lblOff) delete lblOff[k];
+      for (const k in hidden) delete hidden[k];
+      render();
+    });
+
+    buildGrid();
+    render();
+    placeTitle();
+
+    function sendHeight() {
+      const height = document.documentElement.scrollHeight || document.body.scrollHeight;
+      window.parent.postMessage({ type: 'resize-iframe', height: height }, '*');
+    }
+    window.addEventListener('load', sendHeight);
+    new MutationObserver(sendHeight).observe(document.body, { attributes: true, childList: true, subtree: true });
+  </script>
+</body>
+
+</html>
