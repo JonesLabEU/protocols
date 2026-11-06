@@ -588,7 +588,7 @@ function blobDeleteNode(b, nid) {
   if (n.parent == null && b.nodes.filter(q => q.parent === nid).length > 1) return;
   for (const c of b.nodes) if (c.parent === nid) c.parent = n.parent;
   b.nodes = b.nodes.filter(q => q.id !== nid);
-  selBlobNode = n.parent != null ? n.parent : (b.nodes[0] || {}).id ?? null;
+  selBlobNode = pdraw ? (n.parent != null ? n.parent : (b.nodes[0] || {}).id ?? null) : null;
   if (!b.nodes.length) { blobs = blobs.filter(x => x !== b); selBlob = null; selBlobNode = null; }
 }
 
@@ -1015,7 +1015,8 @@ function blobEdgePoint(par, child, p) {
 function extendTarget(p) {
   const at = p || curPt;
   if (mode !== 'select' || drawing || pdraw || !altDown || !at) return null;
-  const b = blobById(selBlob), anchor = b && selBlobNode != null ? b.nodes.find(n => n.id === selBlobNode) : null;
+  const b = blobById(selBlob);
+  const anchor = b && (selBlobNode != null ? b.nodes.find(n => n.id === selBlobNode) : b.nodes.at(-1));
   if (b) {
     const child = blobEdgeNear(b, at);
     if (child) {
@@ -1053,7 +1054,8 @@ function extendSelection(p) {
     b.nodes.push(n);
     selBlobNode = n.id;
   } else if (t.kind === 'blob') {
-    const b = blobById(selBlob), anchor = b.nodes.find(n => n.id === selBlobNode);
+    const b = blobById(selBlob);
+    const anchor = selBlobNode != null ? b.nodes.find(n => n.id === selBlobNode) : b.nodes.at(-1);
     const n = {id: b.next++, i: t.at.i, j: t.at.j, r: anchor.r, parent: anchor.id};
     b.nodes.push(n);
     selBlobNode = n.id;
@@ -1144,7 +1146,7 @@ function finishDraw(keepMode) {
 function finishProtein(keepMode) {
   const bid = pdraw && pdraw.bid;
   pdraw = null;
-  if (!keepMode) { mode = 'select'; if (blobById(bid)) { selBlob = bid; selBlobNode = blobById(bid).nodes.at(-1).id; } }
+  if (!keepMode) { mode = 'select'; if (blobById(bid)) { selBlob = bid; selBlobNode = null; } }
   render();
 }
 function newStrandAt(p) {
@@ -1290,11 +1292,8 @@ svgEl.addEventListener('pointerdown', e => {
   if (bid != null) {
     sel.clear(); selNodes.clear();
     selBlob = bid;
+    selBlobNode = null;  // the whole protein; click a node handle to pick one
     const b = blobById(bid);
-    let bn = b.nodes[0], bd = Infinity;
-    const lp0 = toLocal(b, p);
-    for (const n of b.nodes) { const d = len(sub(lp0, W(n))); if (d < bd) { bd = d; bn = n; } }
-    selBlobNode = bn.id;
     pushHistory();
     drag = {type: 'bmove', bid, s: p, orig: b.nodes.map(n => ({...n})), changed: false};
     render();
@@ -1563,7 +1562,7 @@ function selectKey(k) {
   const [kind, id] = [k[0], +k.slice(2)];
   clearSel();
   if (kind === 'm') selImport = id;
-  else if (kind === 'b') { const b = blobById(id); if (b) { selBlob = id; selBlobNode = b.nodes[0].id; } }
+  else if (kind === 'b') { if (blobById(id)) { selBlob = id; selBlobNode = null; } }
   else sel = new Set(unitIds(id));
   render();
 }
@@ -1872,7 +1871,7 @@ function importModel(json) {
     blobs.push(n);
     zAdd('b:' + n.id);
     selBlob = n.id;
-    selBlobNode = n.nodes[0].id;
+    selBlobNode = null;
   }
   if (selBlob != null) sel.clear();
   render();
