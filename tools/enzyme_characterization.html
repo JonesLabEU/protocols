@@ -743,6 +743,22 @@
     const titleInput = $('titleInput');
     let fitState = null, mode = 'time';
 
+    /* ---- embedding options, read once: ?tab=binding|titration locks to one tab and hides the
+       tab bar, &title=none drops the heading, &names=rnp|generic picks the wording. A locked
+       titration defaults to the concrete RNP / DNA wording, since that is how it is embedded. ---- */
+    const PARAMS = new URLSearchParams([location.search.slice(1), location.hash.slice(1)].filter(Boolean).join('&'));
+    const LOCK = {
+      binding: 'time', kinetics: 'time', time: 'time', 'binding-kinetics': 'time',
+      titration: 'conc', conc: 'conc', activity: 'conc'
+    }[(PARAMS.get('tab') || '').toLowerCase().trim()];
+    const VOCAB = {   // e / s are the short forms used on the axis and in the narrow table rows
+      generic: { E: 'Enzyme', S: 'Substrate', e: 'E', s: 'S', y: 'Fraction converted', conv: 'conversion' },
+      rnp: { E: 'RNP', S: 'DNA', e: 'RNP', s: 'DNA', y: 'Cleavage efficiency', conv: 'cleavage' }
+    };
+    const V = VOCAB[(PARAMS.get('names') || (LOCK ? 'rnp' : 'generic')).toLowerCase().trim()] || VOCAB.generic;
+    V.ratio = `${V.e}:${V.s}`;
+    V.Conv = V.conv[0].toUpperCase() + V.conv.slice(1);
+
     /* ======================= UNIFIED MODEL =======================
        y = y_inf + (y_0 - y_inf) exp(-k v)        p = [k, y_inf], y_0 clamped per assay
          time assay: v = t (s),            y_0 = first point (or 1 when normalized), y_inf = f
@@ -959,14 +975,14 @@
       conc: {
         title: 'Enzyme activity',
         cols: [
-          { key: 'rnp', kind: 'conc', unitId: 'uRnp', width: '32%', div: true, head: `[Enzyme]<br><select id='uRnp'><option>pM</option><option selected>nM</option><option>µM</option></select>` },
-          { key: 'dna', kind: 'conc', unitId: 'uDna', width: '36%', div: true, head: `[Substrate]<br><select id='uDna'><option>pM</option><option selected>nM</option><option>µM</option></select>` },
-          { key: 'y', kind: 'num', head: 'Fraction converted (<i>y</i>)' }
+          { key: 'rnp', kind: 'conc', unitId: 'uRnp', width: '32%', div: true, head: `[${V.E}]<br><select id='uRnp'><option>pM</option><option selected>nM</option><option>µM</option></select>` },
+          { key: 'dna', kind: 'conc', unitId: 'uDna', width: '36%', div: true, head: `[${V.S}]<br><select id='uDna'><option>pM</option><option selected>nM</option><option>µM</option></select>` },
+          { key: 'y', kind: 'num', head: `${V.y} (<i>y</i>)` }
         ],
         rows: [['0.3333', '10', '0.0975'], ['1', '10', '0.0982'], ['3.333', '10', '0.3909'], ['10', '10', '0.9271'],
           ['33.33', '10', '0.9643'], ['100', '10', '0.9641'], ['333.3', '10', '0.9696']],
         sym: 'r',
-        xlab: 'E:S ratio', ylab: 'Fraction converted',
+        xlab: `${V.ratio} ratio`, ylab: V.y,
         scale: 'log'
       }
     };
@@ -981,7 +997,8 @@
         }),
         texts: {
           xlab: cfg.xlab, ylab: cfg.ylab, legData: 'Data', legFit: 'Fit',
-          eq: 'Equimolar', elb: 'Enzyme activity', h50: '50% conversion', xlo: 'E < S', xhi: 'E > S'
+          eq: 'Equimolar', elb: 'Enzyme activity', h50: `50% ${V.conv}`,
+          xlo: `${V.e} < ${V.s}`, xhi: `${V.e} > ${V.s}`
         },
         lblOff: {}, hidden: {}, title: cfg.title, scale: cfg.scale,
         rnpConc: '10 nM'
@@ -1201,8 +1218,8 @@
     }
     const BASE_TEXTS = () => ({
       xlab: cfg().xlab, ylab: cfg().ylab, legData: 'Data', legFit: 'Fit',
-      eq: 'Equimolar', elb: 'Enzyme activity', h50: '50% conversion',
-      xlo: 'E < S', xhi: 'E > S'
+      eq: 'Equimolar', elb: 'Enzyme activity', h50: `50% ${V.conv}`,
+      xlo: `${V.e} < ${V.s}`, xhi: `${V.e} > ${V.s}`
     });
     let editing = null;
     const texts = () => st().texts;
@@ -1304,26 +1321,26 @@
     function setAxis() {
       AXIS = mode === 'time'
         ? { xFromV: v => v, vFromX: x => x, label: 'Time, s', name: 't' }
-        : { xFromV: v => v, vFromX: x => x, label: 'E:S ratio', name: 'E:S' };
+        : { xFromV: v => v, vFromX: x => x, label: `${V.ratio} ratio`, name: V.ratio };
     }
 
     /* ======================= RESULTS SKELETON ======================= */
     const TIPS = {
-      elb: 'The knee of the curve, where |y″| of the same model written against S:E is largest, exactly '
-        + 'k/(3+√3) = 0.2113k substrate per enzyme. Read as a percentage of productive enzyme it assumes single '
-        + 'turnover, so a value above 100% means more conversions than enzyme molecules, i.e. multiple turnover, '
-        + 'and it is then conversions per enzyme rather than an active fraction.',
-      kd: 'K_D = y∞ / (y₀ − y∞) × [E]. Assumes free enzyme ≈ total enzyme, so the enzyme must be in excess '
-        + 'over its substrate, that y∞ is a real equilibrium plateau rather than an unfinished decay, and that '
-        + 'binding is a simple 1:1 equilibrium reached within the time course.',
+      elb: `The knee of the curve, where |y″| of the same model written against ${V.s}:${V.e} is largest, `
+        + `exactly k/(3+√3) = 0.2113k ${V.S} per ${V.E}. Read as a percentage of productive ${V.E} it assumes `
+        + `single turnover, so a value above 100% means more ${V.conv} events than ${V.E} molecules, i.e. multiple `
+        + `turnover, and it is then events per ${V.E} rather than an active fraction.`,
+      kd: `K_D = y∞ / (y₀ − y∞) × [${V.E}]. Assumes free ${V.E} ≈ total ${V.E}, so it must be in excess `
+        + `over the ${V.S}, that y∞ is a real equilibrium plateau rather than an unfinished decay, and that `
+        + `binding is a simple 1:1 equilibrium reached within the time course.`,
       infTime: 'The level the curve settles at as t grows, i.e. the fraction still unbound at equilibrium. Only '
         + 'meaningful if the late timepoints have actually levelled off; otherwise the fit is extrapolating.',
-      infConc: 'The level the curve approaches at saturating enzyme, i.e. the highest conversion reached. Below 1 '
-        + 'it means some substrate is never converted, from an inactive fraction or an assay ceiling.',
+      infConc: `The level the curve approaches at saturating ${V.E}, i.e. the highest ${V.conv} reached. Below 1 `
+        + `it means some ${V.S} is never converted, from an inactive fraction or an assay ceiling.`,
       y0Time: 'Where the curve starts, at t = 0. Nothing is bound yet, so the unbound fraction is 1 by the '
         + 'physics of the assay. It is set, not fitted, which assumes y is on a 0 to 1 fraction scale.',
-      y0Conc: 'Where the curve starts, at r = 0. With no enzyme in the reaction nothing is converted, so it is 0 '
-        + 'by the physics of the assay. It is set, not fitted.',
+      y0Conc: `Where the curve starts, at r = 0. With no ${V.E} in the reaction nothing is converted, so it is 0 `
+        + `by the physics of the assay. It is set, not fitted.`,
       half: 'Time to cover half the span from y₀ to y∞, computed as ln(2) / k. It is a property of the rate '
         + 'alone, so it does not depend on y₀ or y∞, and it is in the same time unit as k.',
       r2adj: 'R² penalized for the number of fitted parameters, so models with different parameter counts can be '
@@ -1335,7 +1352,7 @@
     function buildResults() {
       const S = st();
       $('opts').innerHTML = cfg().sym === 'r'
-        ? `<i>r</i> = [Enzyme] / [Substrate], the enzyme:substrate (E:S) molar ratio in each reaction`
+        ? `<i>r</i> = [${V.E}] / [${V.S}], the ${V.ratio} molar ratio in each reaction`
         : `<i>t</i> = time since the reaction started`;
       const tt = mode === 'time';
       const fitted = `
@@ -1348,16 +1365,16 @@
       if (mode === 'time') {
         $('results').innerHTML = fitted + `
           <tr><th>Half-life <i>t</i><sub>1/2</sub>, s${info(TIPS.half)}</th><td id='rHalf'></td></tr>
-          <tr><th><label for='rnpConc'>Enzyme conc.</label></th>
-            <td><input type='text' class='cell' id='rnpConc' value='${escapeHtml(S.rnpConc)}' title='Total enzyme concentration with unit, e.g. 10 nM'></td></tr>
+          <tr><th><label for='rnpConc'>${V.E} conc.</label></th>
+            <td><input type='text' class='cell' id='rnpConc' value='${escapeHtml(S.rnpConc)}' title='Total ${V.E} concentration with unit, e.g. 10 nM'></td></tr>
           <tr><th><i>K</i><sub>D</sub>${info(TIPS.kd)}</th><td id='rKd'></td></tr>` + gof;
         $('caveats').innerHTML = '';
         $('rnpConc').addEventListener('input', e => { S.rnpConc = e.target.value; render(); });
       } else {
         $('results').innerHTML = fitted + `
           <tr><th>${sw(C.elb)}Enzyme activity${info(TIPS.elb)}</th><td id='rAct'></td></tr>
-          <tr><th>${sw(C.eq)}Conversion at equimolar point</th><td id='rEq'></td></tr>
-          <tr><th>${sw(C.h50)}E:S at 50% conversion</th><td id='rH50'></td></tr>` + gof;
+          <tr><th>${sw(C.eq)}${V.Conv} at equimolar point</th><td id='rEq'></td></tr>
+          <tr><th>${sw(C.h50)}${V.ratio} at 50% ${V.conv}</th><td id='rH50'></td></tr>` + gof;
         $('caveats').innerHTML = '';
       }
     }
@@ -1866,13 +1883,6 @@
     }
     document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => setMode(t.dataset.mode)));
 
-    /* ---- embedding: ?tab=binding or ?tab=titration locks to one tab and hides the tab bar,
-            &title=none drops the heading. Works as a query or a hash, e.g. #tab=titration ---- */
-    const PARAMS = new URLSearchParams([location.search.slice(1), location.hash.slice(1)].filter(Boolean).join('&'));
-    const LOCK = {
-      binding: 'time', kinetics: 'time', time: 'time', 'binding-kinetics': 'time',
-      titration: 'conc', conc: 'conc', activity: 'conc'
-    }[(PARAMS.get('tab') || '').toLowerCase().trim()];
     if (LOCK) {
       document.querySelector('.tabs').style.display = 'none';
       document.querySelector('h1').textContent = document.querySelector(`.tab[data-mode='${LOCK}']`).textContent;
