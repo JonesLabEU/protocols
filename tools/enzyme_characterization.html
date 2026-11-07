@@ -54,7 +54,7 @@
       max-width: calc(var(--plot-max) + 38px)
     }
 
-    @media (min-width: 1280px) {
+    @media (min-width: 1340px) {
       .cols {
         grid-template-columns: minmax(420px, 1fr) calc(var(--plot-max) + 38px);
         align-items: start
@@ -85,8 +85,17 @@
 
     .inputs {
       display: grid;
-      grid-template-columns: clamp(250px, 52%, 390px) minmax(0, 1fr);
+      grid-template-columns: var(--grid-col, clamp(250px, 52%, 390px)) minmax(0, 1fr);
       gap: 22px
+    }
+
+    /* two data columns need far less room than four, and the parameter table wants the rest */
+    .inputs.time {
+      --grid-col: clamp(205px, 36%, 270px)
+    }
+
+    .inputs.conc {
+      --grid-col: clamp(262px, 48%, 360px)
     }
 
     @media (max-width: 520px) {
@@ -146,10 +155,10 @@
       position: sticky;
       top: 0;
       background: var(--panel2);
-      font-size: 12px;
+      font-size: 11px;
       color: var(--muted);
       font-weight: 500;
-      padding: 5px 8px;
+      padding: 5px 6px;
       text-align: left;
       white-space: normal;
       line-height: 1.3;
@@ -216,6 +225,7 @@
 
     #dataGrid th select {
       border: 1px solid var(--line);
+      font-size: 11px;
       border-radius: 5px;
       background: var(--panel);
       color: var(--txt);
@@ -351,7 +361,12 @@
     }
 
     #results td {
-      white-space: nowrap
+      white-space: nowrap;
+      width: 1%
+    }
+
+    #results th {
+      width: auto
     }
 
     #results th label {
@@ -963,7 +978,7 @@
       time: {
         title: 'Binding affinity',
         cols: [
-          { key: 't', kind: 'time', unitId: 'tUnit', width: '46%', div: true, head: `Time (<i>t</i>)<br><select id='tUnit'><option>s</option><option>min</option><option>h</option><option>d</option></select>` },
+          { key: 't', kind: 'time', unitId: 'tUnit', width: '52%', div: true, head: `Time (<i>t</i>)<br><select id='tUnit'><option>s</option><option>min</option><option>h</option><option>d</option></select>` },
           { key: 'y', kind: 'num', head: 'Fraction unbound (<i>y</i>)' }
         ],
         rows: [['0', '0.996'], ['10 s', '0.996'], ['30 s', '1'], ['1 min', '0.90'], ['3 min', '0.85'],
@@ -975,8 +990,8 @@
       conc: {
         title: 'Enzyme activity',
         cols: [
-          { key: 'rnp', kind: 'conc', unitId: 'uRnp', width: '32%', div: true, head: `[${V.E}]<br><select id='uRnp'><option>pM</option><option selected>nM</option><option>µM</option></select>` },
-          { key: 'dna', kind: 'conc', unitId: 'uDna', width: '36%', div: true, head: `[${V.S}]<br><select id='uDna'><option>pM</option><option selected>nM</option><option>µM</option></select>` },
+          { key: 'rnp', kind: 'conc', unitId: 'uRnp', width: '34%', div: true, head: `[${V.E}]<br><select id='uRnp'><option>pM</option><option selected>nM</option><option>µM</option></select>` },
+          { key: 'dna', kind: 'conc', unitId: 'uDna', width: '38%', div: true, head: `[${V.S}]<br><select id='uDna'><option>pM</option><option selected>nM</option><option>µM</option></select>` },
           { key: 'y', kind: 'num', head: `${V.y} (<i>y</i>)` }
         ],
         rows: [['0.3333', '10', '0.0975'], ['1', '10', '0.0982'], ['3.333', '10', '0.3909'], ['10', '10', '0.9271'],
@@ -1373,8 +1388,8 @@
       } else {
         $('results').innerHTML = fitted + `
           <tr><th>${sw(C.elb)}Enzyme activity${info(TIPS.elb)}</th><td id='rAct'></td></tr>
-          <tr><th>${sw(C.eq)}${V.Conv} at equimolar point</th><td id='rEq'></td></tr>
-          <tr><th>${sw(C.h50)}${V.ratio} at 50% ${V.conv}</th><td id='rH50'></td></tr>` + gof;
+          <tr><th>${sw(C.eq)}Equimolar ${V.conv}</th><td id='rEq'></td></tr>
+          <tr><th>${sw(C.h50)}${V.ratio} at 50%</th><td id='rH50'></td></tr>` + gof;
         $('caveats').innerHTML = '';
       }
     }
@@ -1875,6 +1890,7 @@
     function setMode(m) {
       if (editing) finishEdit(true);
       mode = m;
+      document.querySelector('.inputs').className = 'inputs ' + m;
       document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.mode === m));
       sel = null;
       buildHead(); buildResults(); setFormula(); syncButtons();
