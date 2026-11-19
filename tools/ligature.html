@@ -34,9 +34,15 @@ button svg text{stroke:none;fill:currentColor}
 .layer .grip{cursor:grab;color:#9ca3af;font-size:13px;line-height:1}
 .layer .nm{overflow:hidden;text-overflow:ellipsis}
 .layer .dot{width:10px;height:10px;border-radius:3px;flex:none;border:1px solid rgba(0,0,0,.15)}
+.lgroup{border-left:2px solid #c7cbd3;border-radius:2px;padding-left:3px;margin:3px 0}
 
 .plabel{font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em}
 #hexOut{font:11px ui-monospace,monospace;color:#6b7280;height:14px}
+.menupop{position:fixed;z-index:10;display:none;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:6px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+.menupop .mrow{display:flex;align-items:center;gap:8px;padding:4px 7px;border-radius:5px;cursor:pointer;font-size:12px;white-space:nowrap}
+.menupop .mrow:hover{background:#f3f4f6}
+.menupop .mrow svg{width:30px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linejoin:round;color:var(--btn)}
+.menupop .mrow svg .f{fill:currentColor;stroke:none}
 #toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%);background:#111827;color:#fff;padding:6px 12px;border-radius:6px;opacity:0;transition:opacity .2s;pointer-events:none}
 </style>
 </head>
@@ -47,7 +53,8 @@ button svg text{stroke:none;fill:currentColor}
   <button data-mode="select" title="Select">
     <svg viewBox="0 0 24 24"><path d="M5 3.5 18.5 11l-6.2 1.6L9.8 19z"/></svg></button>
   <button data-mode="na" title="Nucleic acid"></button>
-  <button data-mode="protein" title="Protein"></button>
+  <button id="proteinBtn" data-mode="protein" title="Protein"></button>
+  <button id="partsBtn" title="Components"><svg viewBox="0 0 24 24"><path d="M5 19V7h11"/><path d="M13 3.5 20 7l-7 3.5z" fill="currentColor" stroke="none"/></svg></button>
   <div class="sep"></div>
   <button data-act="complement" title="Complementary strand"></button>
   <button data-act="bases" title="Base ticks"></button>
@@ -68,6 +75,8 @@ button svg text{stroke:none;fill:currentColor}
   <div id="hexOut"></div>
 </div>
 <div id="layers"><div id="layerList"></div></div>
+<div class="menupop" id="partsPop"></div>
+<div class="menupop" id="protPop"></div>
 <div id="exportMenu">
   <button data-ex="svg">Save SVG</button><button data-ex="png">Save PNG</button>
   <button data-ex="exc">Save Excalidraw</button>
@@ -97,14 +106,38 @@ const OC = {
   yellow: ['#fff9db','#fff3bf','#ffec99','#ffe066','#ffd43b','#fcc419','#fab005','#f59f00','#f08c00','#e67700'],
   orange: ['#fff4e6','#ffe8cc','#ffd8a8','#ffc078','#ffa94d','#ff922b','#fd7e14','#f76707','#e8590c','#d9480f'],
 };
+// every hue is pulled toward a warm gray, so nothing on the canvas shouts
+const MUTE = 0.34, MUTE_TO = '#8b8678';
+(() => {
+  const h = c => { const n = parseInt(c.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+  const g = h(MUTE_TO);
+  for (const k in OC) OC[k] = OC[k].map((c, i) => i >= 8 ? c :  // the darkest two stay as they are
+    '#' + h(c).map((v, m) => Math.round(v + (g[m] - v) * MUTE).toString(16).padStart(2, '0')).join(''));
+})();
 const SHADES = [2, 3, 5, 6, 7, 9], BLACK = '#1e1e1e';
 const DEFAULT_COLOR = OC.gray[7], BLOB_COLOR = OC.orange[2];  // the palest shade in the picker
 const cfg = {r: 12, w: 3.5, tw: 2, width: 0.6, bpPerEdge: 4, blobR: 52, corner: 14, cell: 3, edge: 3};
 
+// synbio components: a glyph on the grid, with a label you can edit in place
+const HC = 13;  // half-height of a boxed glyph
+// Only the boxy glyphs carry a label, and it is written inside the box; the others
+// are read from their shape. Default colours are two shades paler than the hue row.
+const PARTS = {
+  promoter:   {name: 'Promoter',   w: 46,  top: -38, col: () => OC.gray[8]},
+  rbs:        {name: 'RBS',        w: 54,  top: -16, col: () => OC.teal[4]},
+  cds:        {name: 'CDS',        w: 140, top: -16, col: () => OC.blue[4], label: 'gene'},
+  terminator: {name: 'Terminator', w: 54,  top: -36, col: () => OC.gray[8]},
+  origin:     {name: 'Origin',     w: 40,  top: -22, col: () => OC.grape[4]},
+  misc:       {name: 'Part',       w: 100, top: -16, col: () => OC.gray[4], label: 'part'},
+};
+const hasLabel = pt => 'label' in (PARTS[pt.type] || {});
+
 let strands = [], nextId = 1, nextGid = 1;
 let blobs = [], nextBid = 1;
 let imports = [], nextImp = 1, selImport = null;
-let zOrder = [];  // stacking order, bottom first: 's:<id>' | 'b:<id>' | 'm:<id>'
+let parts = [], nextPartId = 1, selPart = null;
+let lastTouched = null;  // {kind, id} of the object most recently selected or moved
+let zOrder = [];  // stacking order, bottom first: 's:<id>' | 'b:<id>' | 'm:<id>' | 'p:<id>'
 let sel = new Set(), selNodes = new Set(), drawing = null, pdraw = null, drag = null, lastDown = null;
 let selBlob = null, selBlobNode = null;
 let mode = 'select', altDown = false, curPt = null;
@@ -241,7 +274,12 @@ function centerline(q) {
 }
 function computeSides(CL) {
   const all = [], out = new Map();
-  for (const [id, c] of CL) { out.set(id, c.segs.map(q => q.pref || 1)); c.segs.forEach((q, k) => all.push({id, k, s: q})); }
+  for (const [id, c] of CL) {
+    out.set(id, c.segs.map(q => q.pref || 1));
+    const q0 = byId(id);
+    if (q0 && q0.bases === false) continue;  // no ticks to face: leave its side where it is
+    c.segs.forEach((q, k) => all.push({id, k, s: q}));
+  }
   const Dmax = 2.6 * TH;
   for (const X of all) {
     if (X.s.pref) continue;
@@ -592,16 +630,156 @@ function blobDeleteNode(b, nid) {
   if (!b.nodes.length) { blobs = blobs.filter(x => x !== b); selBlob = null; selBlobNode = null; }
 }
 
+// ---------- synbio components ----------
+// A component is anchored at a lattice node, drawn in its own local frame with the
+// baseline at y = 0 and the anchor at x = 0, then scaled and turned about its centre.
+const partById = id => parts.find(x => x.id === id);
+const partDef = pt => PARTS[pt.type] || PARTS.misc;
+const partFontSize = pt => Math.max(8, 12 * (pt.sc || 1));
+// a boxed glyph grows to fit whatever is written in it
+function partW(pt) {
+  const k = pt.sc || 1, base = partDef(pt).w * k;
+  if (!hasLabel(pt)) return base;
+  const tw = measureText(pt.label || '', partFontSize(pt)) + 22 * k + (pt.type === 'cds' ? 18 * k : 0);
+  return Math.max(base, tw);
+}
+const partAnchor = pt => ({x: pt.x, y: pt.y});
+function partBox(pt) {  // local, unrotated
+  const k = pt.sc || 1, d = partDef(pt);
+  return {x: 0, y: d.top * k, w: partW(pt), h: (d.top === -16 ? 16 : 18) * k - d.top * k};
+}
+function partPivot(pt) {
+  const b = partBox(pt), A = partAnchor(pt);
+  return {x: A.x + b.x + b.w / 2, y: A.y + b.y + b.h / 2};
+}
+// every glyph is a list of paths, so the same description draws, exports and converts
+function partShapes(pt) {
+  const w = partW(pt), k = pt.sc || 1, c = pt.color || partDef(pt).col();
+  const rim = mix(c, '#000000', .32), h = HC * k;
+  const out = [];
+  if (pt.type === 'cds') {
+    const head = Math.min(20 * k, w * 0.45);
+    out.push({d: `M0 ${-h} L${f(w - head)} ${-h} L${f(w)} 0 L${f(w - head)} ${h} L0 ${h} Z`, fill: c, stroke: rim, sw: 1.5 * k});
+  } else if (pt.type === 'promoter') {
+    const top = -34 * k, bx = 5 * k, tip = w, hx = w - 13 * k;
+    out.push({d: `M${f(bx)} 0 L${f(bx)} ${f(top)} L${f(hx)} ${f(top)}`, fill: 'none', stroke: c, sw: 2.8 * k});
+    out.push({d: `M${f(hx)} ${f(top - 6 * k)} L${f(tip)} ${f(top)} L${f(hx)} ${f(top + 6 * k)} Z`, fill: c, stroke: 'none', sw: 0});
+  } else if (pt.type === 'terminator') {
+    const top = -32 * k, cx = w / 2, arm = Math.min(14 * k, w * 0.45);
+    out.push({d: `M${f(cx)} 0 L${f(cx)} ${f(top)}`, fill: 'none', stroke: c, sw: 3 * k});
+    out.push({d: `M${f(cx - arm)} ${f(top)} L${f(cx + arm)} ${f(top)}`, fill: 'none', stroke: c, sw: 3 * k});
+  } else if (pt.type === 'rbs') {
+    out.push({d: `M0 0 A${f(w / 2)} ${f(13 * k)} 0 0 1 ${f(w)} 0 Z`, fill: c, stroke: rim, sw: 1.5 * k});
+  } else if (pt.type === 'origin') {
+    const r = w / 2;  // a circle, sitting on the baseline
+    out.push({d: `M0 0 A${f(r)} ${f(r)} 0 1 0 ${f(w)} 0 A${f(r)} ${f(r)} 0 1 0 0 0 Z`, fill: c, stroke: rim, sw: 1.5 * k});
+  } else {
+    const r = 3 * k;
+    out.push({d: `M${f(r)} ${f(-h)} L${f(w - r)} ${f(-h)} Q${f(w)} ${f(-h)} ${f(w)} ${f(-h + r)} L${f(w)} ${f(h - r)} Q${f(w)} ${f(h)} ${f(w - r)} ${f(h)} L${f(r)} ${f(h)} Q0 ${f(h)} 0 ${f(h - r)} L0 ${f(-h + r)} Q0 ${f(-h)} ${f(r)} ${f(-h)} Z`, fill: c, stroke: rim, sw: 1.5 * k});
+  }
+  return out;
+}
+// the label is written inside the box, clear of the arrowhead on a CDS
+const partLabelPos = pt => {
+  const w = partW(pt), k = pt.sc || 1;
+  return {x: pt.type === 'cds' ? (w - Math.min(20 * k, w * 0.45)) / 2 : w / 2, y: 0};
+};
+function partSVG(pt, idPrefix) {
+  const col = pt.color || partDef(pt).col();
+  let s = partShapes(pt).map(sh =>
+    `<path d="${sh.d}" fill="${sh.fill}" stroke="${sh.stroke}"` +
+    (sh.sw ? ` stroke-width="${f(sh.sw)}" stroke-linejoin="round"` : '') + `/>`).join('');
+  if (hasLabel(pt) && pt.label) {
+    const L = partLabelPos(pt), flip = labelFlipped(pt);
+    s += `<text x="${f(L.x)}" y="${f(L.y)}" fill="${labelInk(col)}" stroke="none"` +
+      ` font-family="system-ui, sans-serif" font-size="${f(partFontSize(pt))}" font-weight="500"` +
+      ` text-anchor="middle" dominant-baseline="central"` +
+      (flip ? ` transform="rotate(180 ${f(L.x)} ${f(L.y)})"` : '') + `>${esc(pt.label)}</text>`;
+  }
+  return idPrefix ? `<g id="${idPrefix}">${s}</g>` : s;
+}
+// dark enough to read on its own fill
+const labelInk = c => mix(c, '#000000', .62);
+// past a quarter turn the text would be on its head, so it is turned back
+const labelFlipped = pt => { const r = (((pt.rot || 0) % 360) + 360) % 360; return r > 90 && r < 270; };
+let _measEl = null;
+function measureText(s, size) {
+  if (!s) return 0;
+  if (!_measEl) {
+    _measEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    _measEl.setAttribute('font-family', 'system-ui, sans-serif');
+    _measEl.setAttribute('font-weight', '500');
+    _measEl.setAttribute('visibility', 'hidden');
+    svgEl.appendChild(_measEl);
+  }
+  _measEl.setAttribute('font-size', size);
+  _measEl.textContent = s;
+  return _measEl.getComputedTextLength();
+}
+// local (unrotated, anchor-relative) point for a world point
+function partLocal(pt, p) {
+  const A = partAnchor(pt), q = pt.rot ? rotPt(p, partPivot(pt), -pt.rot) : p;
+  return {x: q.x - A.x, y: q.y - A.y};
+}
+function inPart(pt, p) {
+  const q = partLocal(pt, p), b = partBox(pt), m = 4 / vb.z;
+  return q.x >= b.x - m && q.x <= b.x + b.w + m && q.y >= b.y - m && q.y <= b.y + b.h + m;
+}
+const hitPart = p => { const r = [...parts].reverse().find(pt => inPart(pt, p)); return r ? r.id : null; };
+
+// Where a component can land. The backbone is drawn half a duplex width off the
+// lattice line, so a component snapped to the grid could never touch it; instead it
+// snaps onto the drawn run itself, taking that run's direction.
+function backboneRuns() {
+  const out = [];
+  for (const q of strands) {
+    const g = G.get(q.id);
+    if (!g) continue;
+    const n = g.In.length;
+    for (let k = 0; k < g.nseg; k++) {
+      const A = toWorld(q, g.Out[k]), B = toWorld(q, g.In[(k + 1) % n]);
+      if (len(sub(B, A)) > 8) out.push({A, B, u: unit(sub(B, A))});
+    }
+  }
+  return out;
+}
+const SNAP_TOL = 30;
+// the placement for a component whose baseline midpoint is nearest p
+function partPlacement(pt, p) {
+  const half = partW(pt) / 2;
+  let best = null, bd = SNAP_TOL;
+  for (const r of backboneRuns()) {
+    const v = sub(r.B, r.A), l2 = dot(v, v);
+    const s = Math.max(0, Math.min(1, dot(sub(p, r.A), v) / l2));
+    const q = add(r.A, v, s), d = len(sub(p, q));
+    if (d < bd) { bd = d; best = {q, u: r.u}; }
+  }
+  if (best) {  // sit on the run, centred across it
+    const mid = {x: best.q.x - half, y: best.q.y};
+    return {x: mid.x, y: mid.y, rot: null, snapped: true};
+  }
+  const c = W(nearest(p.x - half, p.y));  // otherwise the anchor goes on the grid
+  return {x: c.x, y: c.y, rot: null, snapped: false};
+}
+function placePart(pt, p) {
+  const pl = partPlacement(pt, p);
+  pt.x = pl.x; pt.y = pl.y;
+  return pl.snapped;
+}
+
 // ---------- stacking, selection geometry, lattice rotation ----------
+// where a newly made object lands: proteins under the nucleic acids, components over them
+const Z_RANK = {m: 0, b: 1, s: 2, p: 3};
 function zList() {  // every object, bottom first
   const live = new Map();
   for (const m of imports) live.set('m:' + m.id, {kind: 'm', id: m.id, obj: m});
   for (const b of blobs) live.set('b:' + b.id, {kind: 'b', id: b.id, obj: b});
   for (const q of strands) live.set('s:' + q.id, {kind: 's', id: q.id, obj: q});
+  for (const pt of parts) live.set('p:' + pt.id, {kind: 'p', id: pt.id, obj: pt});
   const out = [];
   for (const k of zOrder) if (live.has(k)) { out.push(live.get(k)); live.delete(k); }
-  for (const v of live.values()) {  // anything not placed yet: proteins below the nucleic acids
-    const at = v.kind === 'b' ? out.findIndex(o => o.kind === 's') : -1;
+  for (const v of live.values()) {  // anything not placed yet goes in by rank
+    const at = out.findIndex(o => Z_RANK[o.kind] > Z_RANK[v.kind]);
     at >= 0 ? out.splice(at, 0, v) : out.push(v);
   }
   zOrder = out.map(o => o.kind + ':' + o.id);
@@ -609,10 +787,11 @@ function zList() {  // every object, bottom first
 }
 function zAdd(k) {
   if (zOrder.includes(k)) return;
-  const at = k[0] === 'b' ? zOrder.findIndex(x => x[0] === 's') : -1;
+  const at = zOrder.findIndex(x => Z_RANK[x[0]] > Z_RANK[k[0]]);
   at >= 0 ? zOrder.splice(at, 0, k) : zOrder.push(k);
 }
 function selObj() {
+  if (selPart != null) { const pt = partById(selPart); return pt ? {kind: 'p', objs: [pt]} : null; }
   if (selImport != null) { const m = imports.find(x => x.id === selImport); return m ? {kind: 'm', objs: [m]} : null; }
   if (selBlob != null) { const b = blobById(selBlob); return b ? {kind: 'b', objs: [b]} : null; }
   const qs = selStrands();
@@ -626,6 +805,7 @@ const boxOf = pts => {
 // the object's own, unrotated box; the frame is then turned with it
 function localBox(o) {
   if (o.kind === 'm') { const m = o.objs[0]; return {x: m.x, y: m.y, w: m.w, h: m.h}; }
+  if (o.kind === 'p') { const pt = o.objs[0], A = partAnchor(pt), b = partBox(pt); return {x: A.x + b.x, y: A.y + b.y, w: b.w, h: b.h}; }
   const pts = [];
   if (o.kind === 'b') { const g = BP.get(o.objs[0].id); for (const loop of (g && g.outline) || []) pts.push(...loop); }
   else for (const q of o.objs) { const g = G.get(q.id); if (g) pts.push(...g.pts, ...g.In, ...g.Out); }
@@ -638,7 +818,8 @@ function selFrame() {
   if (!lb) return null;
   const m = o.objs[0];
   const rot = m.rot || 0;
-  const piv = o.kind === 'm' ? {x: m.x + m.w / 2, y: m.y + m.h / 2} : blobPivot(m);
+  const piv = o.kind === 'm' ? {x: m.x + m.w / 2, y: m.y + m.h / 2}
+    : o.kind === 'p' ? partPivot(m) : blobPivot(m);
   return {o, lb, rot, piv, wpt: p => rotPt(p, piv, rot)};
 }
 const selBox = () => { const fr = selFrame(); return fr && fr.lb; };
@@ -670,7 +851,7 @@ function latCenter(nodes) {
 }
 
 // ---------- bounds / linking ----------
-function bounds(ids, bids, mids) {
+function bounds(ids, bids, mids, pids) {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   const take = p => { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y); };
   for (const id of ids || []) {
@@ -688,6 +869,11 @@ function bounds(ids, bids, mids) {
     for (const loop of g.outline) for (const p of loop) take(rot ? rotPt(p, c, rot) : p);
   }
   for (const m of mids || []) { take({x: m.x, y: m.y}); take({x: m.x + m.w, y: m.y + m.h}); }
+  for (const pt of pids || []) {
+    const A = partAnchor(pt), b = partBox(pt), piv = partPivot(pt), rot = pt.rot || 0;
+    for (const c of boxCorners({x: A.x + b.x, y: A.y + b.y, w: b.w, h: b.h}))
+      take(rot ? rotPt(c, piv, rot) : c);
+  }
   return {x: x0, y: y0, w: x1 - x0, h: y1 - y0};
 }
 function linked(q) {
@@ -699,13 +885,16 @@ function linked(q) {
 const unitIds = id => linked(byId(id)).map(q => q.id);
 
 // ---------- history ----------
-const snap = () => JSON.stringify({strands, blobs, imports, zOrder, nextId, nextGid, nextBid, nextImp});
+const snap = () => JSON.stringify({strands, blobs, imports, parts, zOrder,
+  nextId, nextGid, nextBid, nextImp, nextPartId});
 function restore(st) {
-  ({strands, blobs, imports, zOrder, nextId, nextGid, nextBid, nextImp} = JSON.parse(st));
+  ({strands, blobs, imports, parts, zOrder, nextId, nextGid, nextBid, nextImp, nextPartId} = JSON.parse(st));
+  parts = parts || [];
   sel = new Set([...sel].filter(byId));
   selNodes.clear();
   if (!blobById(selBlob)) { selBlob = null; selBlobNode = null; }
   if (!imports.some(m => m.id === selImport)) selImport = null;
+  if (!partById(selPart)) selPart = null;
 }
 function pushHistory() { undoStack.push(snap()); if (undoStack.length > 300) undoStack.shift(); redoStack.length = 0; }
 function undo() { if (drawing) finishDraw(); pdraw = null; if (!undoStack.length) return; redoStack.push(snap()); restore(undoStack.pop()); render(); }
@@ -746,6 +935,15 @@ function render() {
       gp.path(g.d).fill(blobRim(b.color)).stroke('none');
       if (g.dIn) gp.path(g.dIn).fill(b.color).stroke('none').translate(INSET.dx, INSET.dy);
       if (o.obj.rot) { const c = blobPivot(o.obj); gp.rotate(o.obj.rot, c.x, c.y); }
+    } else if (o.kind === 'p') {
+      const pt = o.obj, gp = content.group();
+      gp.svg(partSVG(pt));
+      if (editing && editing.kind === 'p' && editing.id === pt.id)
+        drawCaret(gp, pt.label || '', partFontSize(pt), partLabelPos(pt),
+          labelInk(pt.color || partDef(pt).col()), editing.caret, labelFlipped(pt), editing.sel);
+      const A = partAnchor(pt);
+      gp.translate(A.x, A.y);
+      if (pt.rot) { const c = partPivot(pt); gp.rotate(pt.rot, c.x - A.x, c.y - A.y); }
     } else {
       const q = o.obj, g = G.get(q.id);
       if (!g) continue;
@@ -753,6 +951,13 @@ function render() {
       for (const [a, c] of g.ticks) gp.line(f(a.x), f(a.y), f(c.x), f(c.y)).stroke({color: q.color, width: cfg.tw});
       gp.path(g.d).fill('none').stroke({color: q.color, width: cfg.w, linecap: 'round', linejoin: 'round'});
       if (g.lab && !(drawing && drawing.id === q.id)) { label(gp, '5′', g.lab.p5, q.color); label(gp, '3′', g.lab.p3, q.color); }
+      const naming = editing && editing.kind === 's' && editing.id === q.id;
+      if (q.plasmid && (q.name || naming)) {  // the plasmid's name sits in the middle of the ring
+        const c = plasmidCenter(q), ink = mix(q.color, '#000000', .1);
+        if (q.name) gp.plain(q.name).font({size: 14, family: 'system-ui, sans-serif', weight: 500, anchor: 'middle'})
+          .attr({x: f(c.x), y: f(c.y), 'dominant-baseline': 'central'}).fill(ink);
+        if (naming) drawCaret(gp, q.name || '', 14, c, ink, editing.caret, false, editing.sel);
+      }
       spin(gp, q);
     }
   }
@@ -889,6 +1094,12 @@ function cleanup() {
   if (changed) selNodes.clear();
 }
 function delSel() {
+  if (selPart != null) {
+    pushHistory();
+    parts = parts.filter(x => x.id !== selPart);
+    selPart = null;
+    return;
+  }
   if (selImport != null) {
     pushHistory();
     imports = imports.filter(m => m.id !== selImport);
@@ -1074,6 +1285,10 @@ function extendSelection(p) {
 // ---------- rotate / scale ----------
 const ROT_STEP = 15;  // every object turns in 15 degree steps
 function applyRotate(o, orig, steps) {
+  if (o.kind === 'p') {
+    o.objs.forEach((obj, k) => { obj.rot = ((orig.each[k].rot + steps * ROT_STEP) % 360 + 360) % 360; });
+    return;
+  }
   if (o.kind === 's') {
     // The nodes themselves turn, so they stay on the grid. Only multiples of 60 map the lattice
     // onto itself, so at the angles in between each node lands on its nearest grid point and the
@@ -1096,6 +1311,12 @@ function applyRotate(o, orig, steps) {
 function applyScale(o, orig, k) {
   o.objs.forEach((obj, idx) => {
     const e = orig.each[idx];
+    if (o.kind === 'p') {  // scale about the middle of the baseline, so it stays put
+      const mid = {x: e.x + partW({...obj, sc: e.sc}) / 2, y: e.y};
+      obj.sc = Math.max(0.35, Math.min(4, e.sc * k));
+      obj.x = mid.x - partW(obj) / 2; obj.y = mid.y;
+      return;
+    }
     if (o.kind === 'm') {
       const w = Math.max(16, e.w * k), h = Math.max(16, e.h * k);
       obj.w = w; obj.h = h;
@@ -1115,6 +1336,7 @@ const origOf = o => ({
   rc: o.objs[0].rc,
   each: o.objs.map(obj => o.kind === 'm'
     ? {rot: obj.rot || 0, w: obj.w, h: obj.h, cx: obj.x + obj.w / 2, cy: obj.y + obj.h / 2}
+    : o.kind === 'p' ? {rot: obj.rot || 0, sc: obj.sc || 1, x: obj.x, y: obj.y}
     : {rot: obj.rot || 0, rc: obj.rc, nodes: obj.nodes.map(n => ({...n}))}),
 });
 function hitRotate(p) {
@@ -1140,22 +1362,70 @@ function finishDraw(keepMode) {
   drawing = null;
   cleanup();
   if (undoStack.length && undoStack.at(-1) === snap()) undoStack.pop();
-  if (!keepMode) { mode = 'select'; if (byId(id)) sel = new Set(unitIds(id)); }
+  if (!keepMode) { mode = 'select'; if (byId(id)) { sel = new Set(unitIds(id)); touch('s', id); } }
   render();
 }
 function finishProtein(keepMode) {
   const bid = pdraw && pdraw.bid;
   pdraw = null;
-  if (!keepMode) { mode = 'select'; if (blobById(bid)) { selBlob = bid; selBlobNode = null; } }
+  if (!keepMode) { mode = 'select'; if (blobById(bid)) { selBlob = bid; selBlobNode = null; touch('b', bid); } }
   render();
 }
+// a plasmid is an ordinary closed path, premade as a rectangle on the grid
+const plasmidCenter = q => {
+  let x = 0, y = 0;
+  for (const n of q.nodes) { const P = W(n); x += P.x; y += P.y; }
+  return {x: x / q.nodes.length, y: y / q.nodes.length};
+};
+const inPlasmid = (q, p0) => {  // point in the ring's polygon, for the name's hit area
+  if (!q.plasmid) return false;
+  const p = toLocal(q, p0), pts = q.nodes.map(W);
+  let on = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const a = pts[i], b = pts[j];
+    if ((a.y > p.y) !== (b.y > p.y) && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x) on = !on;
+  }
+  return on;
+};
+function newPlasmidAt(c, name) {
+  pushHistory();
+  const k = 14, m = 3;  // [1,0] runs across, [-1,2] runs down, so the corners stay on the grid
+  const q = {
+    id: nextId++, plasmid: true, name: name || 'plasmid',
+    nodes: [{i: c.i, j: c.j}, {i: c.i + k, j: c.j}, {i: c.i + k - m, j: c.j + 2 * m}, {i: c.i - m, j: c.j + 2 * m}],
+    closed: true, color: DEFAULT_COLOR, bases: false, group: null, pair: null,
+  };
+  strands.push(q);
+  zAdd('s:' + q.id);
+  clearSel();
+  sel = new Set([q.id]);
+  touch('s', q.id);
+  return q;
+}
+function newPartAt(p, type) {
+  pushHistory();
+  const d = PARTS[type] || PARTS.misc;
+  const pt = {id: nextPartId++, type, x: 0, y: 0, rot: 0, sc: 1, label: d.label, color: d.col()};
+  placePart(pt, p);
+  parts.push(pt);
+  zAdd('p:' + pt.id);
+  clearSel();
+  selPart = pt.id;
+  touch('p', pt.id);
+  return pt;
+}
+const viewCenter = () => {
+  const r = host.getBoundingClientRect();
+  return draw.point(r.left + r.width / 2, r.top + r.height / 2);
+};
 function newStrandAt(p) {
   pushHistory();
   const q = {id: nextId++, nodes: [nearest(p.x, p.y)], closed: false, color: DEFAULT_COLOR, bases: true, group: null, pair: null};
   strands.push(q);
   zAdd('s:' + q.id);
   drawing = {id: q.id, preview: null, side: 0, atStart: false};
-  sel = new Set([q.id]); selNodes.clear(); selBlob = null; selBlobNode = null;
+  clearSel();
+  sel = new Set([q.id]);
   return q;
 }
 function newBlobAt(p) {
@@ -1164,7 +1434,7 @@ function newBlobAt(p) {
   const b = {id: nextBid++, color: BLOB_COLOR, next: 2, nodes: [{id: 1, i: c.i, j: c.j, r: cfg.blobR, parent: null}]};
   blobs.push(b);
   zAdd('b:' + b.id);
-  sel.clear(); selNodes.clear();
+  clearSel();
   selBlob = b.id; selBlobNode = 1;
   return b;
 }
@@ -1192,7 +1462,8 @@ function inImport(m, p) {  // undo the placement rotation before the box test
   }
   return q.x >= m.x && q.x <= m.x + m.w && q.y >= m.y && q.y <= m.y + m.h;
 }
-function clearSel() { sel.clear(); selNodes.clear(); selBlob = null; selBlobNode = null; selImport = null; }
+function clearSel() { sel.clear(); selNodes.clear(); selBlob = null; selBlobNode = null; selImport = null; selPart = null; }
+const touch = (kind, id) => { lastTouched = {kind, id}; };
 function hoverCursor(p) {
   let c;
   if (mode !== 'select' || drawing || pdraw) c = 'crosshair';
@@ -1201,7 +1472,8 @@ function hoverCursor(p) {
   else if (hitHandle(p) || (selBlob != null && hitBlobNode(p))) c = 'move';
   else if (hitEdgeHandle(p)) c = 'ns-resize';
   else if (selBlob != null && hitBlobRing(p)) c = 'nwse-resize';
-  else if (hitStrand(p) != null || hitBlob(p) != null) c = 'pointer';
+  else if (hitStrand(p) != null || hitBlob(p) != null || hitPart(p) != null
+    || strands.some(q => q.plasmid && inPlasmid(q, p))) c = 'pointer';
   else c = 'default';
   svgEl.style.cursor = c;
 }
@@ -1210,7 +1482,8 @@ svgEl.addEventListener('contextmenu', e => e.preventDefault());
 svgEl.addEventListener('pointerdown', e => {
   const p = draw.point(e.clientX, e.clientY);
   svgEl.setPointerCapture(e.pointerId);
-  pop.style.display = 'none'; exportMenu.style.display = 'none';
+  closeMenus();
+  if (editing) commitLabel(true);
   if (layersOpen) layersOpen = false;
   if (e.button !== 0) return;
 
@@ -1251,6 +1524,31 @@ svgEl.addEventListener('pointerdown', e => {
   lastDown = isDbl ? null : {t: now, x: e.clientX, y: e.clientY};
 
   const h = hitHandle(p);
+  const pid = hitPart(p);
+  if (pid != null) {
+    clearSel();
+    selPart = pid;
+    touch('p', pid);
+    const pt = partById(pid);
+    pushHistory();
+    drag = {type: 'pmove', id: pid, s: p, grab: sub(p, {x: pt.x + partW(pt) / 2, y: pt.y}),
+      ox: pt.x, oy: pt.y, changed: false,
+      rename: isDbl ? {kind: 'p', id: pid, at: p} : null};
+    render();
+    return;
+  }
+  const plas = [...strands].reverse().find(q => q.plasmid && inPlasmid(q, p));
+  if (plas) {
+    if (!sel.has(plas.id)) { clearSel(); sel = new Set(unitIds(plas.id)); }
+    touch('s', plas.id);
+    selNodes.clear();
+    pushHistory();
+    drag = {type: 'move', s: p, orig: new Map([...sel].map(i => [i, byId(i).nodes.map(n => ({...n}))])),
+      rc: new Map([...sel].map(i => [i, byId(i).rc && {...byId(i).rc}])), changed: false,
+      rename: isDbl ? {kind: 's', id: plas.id, at: p} : null};
+    render();
+    return;
+  }
   const eh = !h ? hitEdgeHandle(p) : null;
   if (eh) { pushHistory(); drag = {type: 'side', id: eh.id, e: eh.e, seg: eh.seg, sx: e.clientX, sy: e.clientY, moved: false}; return; }
   const id = !h ? hitStrand(p) : null;
@@ -1266,13 +1564,14 @@ svgEl.addEventListener('pointerdown', e => {
   }
   if (id != null) {
     const u = e.metaKey || e.ctrlKey ? [id] : unitIds(id);
-    selBlob = null; selBlobNode = null;
+    selBlob = null; selBlobNode = null; selPart = null; selImport = null;
     if (e.shiftKey) {
       const all = u.every(i => sel.has(i));
       u.forEach(i => all ? sel.delete(i) : sel.add(i));
       selNodes.clear(); render(); return;
     }
     if (!sel.has(id)) sel = new Set(u);
+    touch('s', id);
     selNodes.clear(); pushHistory();
     drag = {type: 'move', s: p, orig: new Map([...sel].map(i => [i, byId(i).nodes.map(n => ({...n}))])),
       rc: new Map([...sel].map(i => [i, byId(i).rc && {...byId(i).rc}])), changed: false};
@@ -1283,6 +1582,7 @@ svgEl.addEventListener('pointerdown', e => {
   if (im && hitBlob(p) == null) {
     clearSel();
     selImport = im.id;
+    touch('m', im.id);
     pushHistory();
     drag = {type: 'imove', id: im.id, s: p, ox: im.x, oy: im.y, changed: false};
     render();
@@ -1290,8 +1590,9 @@ svgEl.addEventListener('pointerdown', e => {
   }
   const bid = hitBlob(p);
   if (bid != null) {
-    sel.clear(); selNodes.clear();
+    clearSel();
     selBlob = bid;
+    touch('b', bid);
     selBlobNode = null;  // the whole protein; click a node handle to pick one
     const b = blobById(bid);
     pushHistory();
@@ -1331,7 +1632,12 @@ svgEl.addEventListener('pointermove', e => {
     if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 4) return;
     drag = {type: 'marquee', s: drag.s, r: null};
   }
-  if (drag.type === 'rotate') {
+  if (drag.type === 'pmove') {
+    const pt = partById(drag.id);
+    placePart(pt, sub(p, drag.grab));
+    drag.changed = pt.x !== drag.ox || pt.y !== drag.oy;
+    render();
+  } else if (drag.type === 'rotate') {
     const a = Math.atan2(p.y - drag.c.y, p.x - drag.c.x);
     const steps = Math.round((a - drag.a0) / (ROT_STEP * Math.PI / 180));
     if (steps !== drag.steps) { drag.steps = steps; applyRotate(drag.o, drag.orig, steps); render(); }
@@ -1420,7 +1726,8 @@ function endDrag(e) {
   }
   if (d.type === 'maybe') { clearSel(); render(); return; }  // click on empty canvas deselects
   if (d.type === 'side' && undoStack.at(-1) === snap()) undoStack.pop();
-  if ((d.type === 'move' || d.type === 'nodes' || d.type === 'bmove' || d.type === 'imove') && !d.changed) undoStack.pop();
+  if ((d.type === 'move' || d.type === 'nodes' || d.type === 'bmove' || d.type === 'imove' || d.type === 'pmove') && !d.changed) undoStack.pop();
+  if (d.rename && !d.changed) { editLabel(d.rename, d.rename.at); return; }  // a double-click that did not drag
   if (d.type === 'rotate' && !d.steps) undoStack.pop();
   if (d.type === 'rotate' && d.o.kind === 's') cleanup();  // a snapped node may have landed on its neighbor
   if (d.type === 'scale' && Math.abs(d.k - 1) < 0.02) undoStack.pop();
@@ -1440,6 +1747,7 @@ addEventListener('keyup', e => { if (e.key === 'Alt' && altDown) { altDown = fal
 addEventListener('blur', () => { if (altDown) { altDown = false; render(); } });
 addEventListener('keydown', e => {
   if (e.target.matches('input')) return;
+  if (editKey(e)) return;
   if (e.key === 'Alt' && !altDown) { altDown = true; if (!drag) render(); }
   const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
   if (mod && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
@@ -1504,14 +1812,16 @@ function syncBar() {
   bar.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
   const qs = selStrands().filter(q => q.nodes.length > 1), naSel = qs.length > 0;
   const el = a => bar.querySelector(`[data-act=${a}]`);
-  ['complement', 'bases', 'labels'].forEach(a => el(a).classList.toggle('hide', !naSel));
+  ['complement', 'bases'].forEach(a => el(a).classList.toggle('hide', !naSel));
+  // a closed path has no ends, so 5'/3' has nothing to mark
+  el('labels').classList.toggle('hide', !naSel || qs.every(q => q.closed));
   if (naSel) {  // bases and labels say their state through the glyph, not a filled button
     el('complement').classList.toggle('on', qs.every(q => q.pair));
     const bOn = qs.every(q => q.bases !== false), lOn = qs.every(q => q.labels !== false);
     el('bases').innerHTML = bOn ? ICON.basesOn : ICON.basesOff;
     el('labels').innerHTML = lOn ? ICON.labelsOn : ICON.labelsOff;
   }
-  const anySel = naSel || (selBlob != null && blobById(selBlob));
+  const anySel = naSel || (selBlob != null && blobById(selBlob)) || (selPart != null && partById(selPart));
   swatch.classList.toggle('hide', !anySel);
   document.getElementById('sep2').classList.toggle('hide', !anySel);
   if (!anySel) pop.style.display = 'none';
@@ -1522,6 +1832,8 @@ function syncBar() {
 bar.addEventListener('click', e => {
   const b = e.target.closest('button');
   if (!b) return;
+  if (b.id === 'proteinBtn') { buildProtMenu(); openMenu(protPop, b); return; }
+  if (b.id === 'partsBtn') return;
   if (b.dataset.mode) { setMode(b.dataset.mode); return; }
   const a = b.dataset.act;
   if (!a) return;
@@ -1542,10 +1854,22 @@ let layerDragKey = null, layersOpen = false;
 function layerName(o, idx) {
   if (o.kind === 'm') return o.obj.name;
   if (o.kind === 'b') return 'Protein ' + idx.b;
+  if (o.kind === 'p') return o.obj.label || partDef(o.obj).name;
+  if (o.obj.plasmid) return o.obj.name || 'Plasmid';
   return (o.obj.pair && strands.find(q => q.id === o.obj.pair && q.id < o.obj.id) ? 'Strand ' : 'DNA ') + idx.s;
 }
-function layerColor(o) { return o.kind === 'm' ? '#e5e7eb' : o.obj.color; }
-const layerSelected = o => o.kind === 'm' ? selImport === o.id : o.kind === 'b' ? selBlob === o.id : sel.has(o.id);
+function layerColor(o) { return o.kind === 'm' ? '#e5e7eb' : o.kind === 'p' ? (o.obj.color || partDef(o.obj).col()) : o.obj.color; }
+const layerSelected = o => o.kind === 'm' ? selImport === o.id : o.kind === 'b' ? selBlob === o.id
+  : o.kind === 'p' ? selPart === o.id : sel.has(o.id);
+// objects whose boxes touch belong together; the panel shows each such set as one block
+function overlapGroups(list) {
+  const bs = list.map(boxFor), g = list.map((_, i) => i);
+  const find = i => g[i] === i ? i : (g[i] = find(g[i]));
+  const touch = (a, b) => a && b && a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++)
+    if (touch(bs[i], bs[j])) g[find(i)] = find(j);
+  return list.map((_, i) => find(i));
+}
 function buildLayers() {
   const all = zList().filter(o => !(o.kind === 's' && o.obj.isComp));  // a duplex is one row
   layersEl.style.display = layersOpen ? 'block' : 'none';
@@ -1554,14 +1878,30 @@ function buildLayers() {
   if (!all.length) { layerList.innerHTML = '<div class="layer" style="color:#9ca3af">nothing yet</div>'; return; }
   const idx = {s: 0, b: 0};
   const names = all.map(o => { if (o.kind === 's') idx.s++; if (o.kind === 'b') idx.b++; return layerName(o, idx); });
-  layerList.innerHTML = all.map((o, k) => `<div class="layer${layerSelected(o) ? ' sel' : ''}" draggable="true" data-k="${o.kind}:${o.id}">` +
-    `<span class="grip">⠿</span><span class="dot" style="background:${layerColor(o)}"></span><span class="nm">${esc(names[k])}</span></div>`)
-    .reverse().join('');
+  const grp = overlapGroups(all);
+  const row = k => `<div class="layer${layerSelected(all[k]) ? ' sel' : ''}" draggable="true" data-k="${all[k].kind}:${all[k].id}">` +
+    `<span class="grip">⠿</span><span class="dot" style="background:${layerColor(all[k])}"></span><span class="nm">${esc(names[k])}</span></div>`;
+  // highest first, and a set that overlaps is kept together in one block
+  const order = all.map((_, k) => k).reverse();
+  let html = '', run = [];
+  const flush = () => {
+    if (!run.length) return;
+    const body = run.map(row).join('');
+    html += run.length > 1 ? `<div class="lgroup">${body}</div>` : body;
+    run = [];
+  };
+  for (const k of order) {
+    if (run.length && grp[run[run.length - 1]] !== grp[k]) flush();
+    run.push(k);
+  }
+  flush();
+  layerList.innerHTML = html;
 }
 function selectKey(k) {
   const [kind, id] = [k[0], +k.slice(2)];
   clearSel();
   if (kind === 'm') selImport = id;
+  else if (kind === 'p') { if (partById(id)) selPart = id; }
   else if (kind === 'b') { if (blobById(id)) { selBlob = id; selBlobNode = null; } }
   else sel = new Set(unitIds(id));
   render();
@@ -1573,20 +1913,21 @@ layerList.addEventListener('dragstart', e => {
   layerDragKey = it.dataset.k;
   e.dataTransfer.effectAllowed = 'move';
 });
+const layerRows = () => [...layerList.querySelectorAll('.layer')];
 layerList.addEventListener('dragover', e => {
   e.preventDefault();
   const it = e.target.closest('.layer');
   if (!it || !layerDragKey || it.dataset.k === layerDragKey) return;
-  const items = [...layerList.children], from = items.findIndex(x => x.dataset.k === layerDragKey), to = items.indexOf(it);
+  const items = layerRows(), from = items.findIndex(x => x.dataset.k === layerDragKey), to = items.indexOf(it);
   if (from < 0) return;
-  layerList.insertBefore(items[from], from < to ? it.nextSibling : it);
+  it.parentNode.insertBefore(items[from], from < to ? it.nextSibling : it);
 });
 layerList.addEventListener('drop', e => e.preventDefault());
 layerList.addEventListener('dragend', () => {
   if (!layerDragKey) return;
   layerDragKey = null;
   pushHistory();
-  const visible = [...layerList.children].map(x => x.dataset.k).reverse();  // the panel lists the top first
+  const visible = layerRows().map(x => x.dataset.k).reverse();  // the panel lists the top first
   const hidden = new Map();  // complements follow the strand they belong to
   for (const q of strands) if (q.isComp && q.pair != null) hidden.set('s:' + q.pair, 's:' + q.id);
   zOrder = visible.flatMap(k => hidden.has(k) ? [k, hidden.get(k)] : [k]);
@@ -1599,22 +1940,323 @@ document.getElementById('layersBtn').onclick = () => {
   if (layersOpen) { layersEl.style.right = 'auto'; placeUnder(layersEl, document.getElementById('layersBtn')); }
 };
 
+// ---------- placing a new object ----------
+function boxFor(o) {
+  if (o.kind === 'm') { const m = o.obj; return {x: m.x, y: m.y, w: m.w, h: m.h}; }
+  if (o.kind === 'p') return localBoxOf({kind: 'p', objs: [o.obj]});
+  const b = o.kind === 'b' ? bounds(null, [o.id]) : bounds([o.id]);
+  return isFinite(b.w) ? b : null;
+}
+function worldBoxes() {
+  return zList().map(boxFor).filter(Boolean);
+}
+const GAP = 34;
+const hits = (a, b) => a.x < b.x + b.w + GAP && a.x + a.w + GAP > b.x && a.y < b.y + b.h + GAP && a.y + a.h + GAP > b.y;
+const viewRect = () => {
+  const r = host.getBoundingClientRect();
+  return {x: vb.x, y: vb.y, w: r.width / vb.z, h: r.height / vb.z};
+};
+const inView = (c, v) => c.x >= v.x && c.y >= v.y && c.x + c.w <= v.x + v.w && c.y + c.h <= v.y + v.h;
+const RING = [[1, 0], [0, 1], [0, -1], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+const touchedBox = () => {  // always read from where the object is now, not where it began
+  const t = lastTouched;
+  if (!t) return null;
+  if (t.kind === 'p') { const pt = partById(t.id); return pt && localBoxOf({kind: 'p', objs: [pt]}); }
+  if (t.kind === 'b') { const b = blobById(t.id); if (!b) return null; const x = bounds(null, [t.id]); return isFinite(x.w) ? x : null; }
+  if (t.kind === 'm') { const m = imports.find(x => x.id === t.id); return m && {x: m.x, y: m.y, w: m.w, h: m.h}; }
+  const q = byId(t.id);
+  if (!q) return null;
+  const b = bounds([t.id]);
+  return isFinite(b.w) ? b : null;
+};
+function localBoxOf(o) {  // a part's box in world coordinates, rotation included
+  const pt = o.objs[0], A = partAnchor(pt), lb = partBox(pt), piv = partPivot(pt), rot = pt.rot || 0;
+  return boxOf(boxCorners({x: A.x + lb.x, y: A.y + lb.y, w: lb.w, h: lb.h}).map(c => rot ? rotPt(c, piv, rot) : c));
+}
+function freeSpot(w, h) {
+  const taken = worldBoxes();
+  const fr = selFrame();
+  let ref = (fr && boxOf(boxCorners(fr.lb).map(fr.wpt))) || touchedBox();
+  if (!ref && taken.length)  // nothing has been touched: go beside everything already there
+    ref = boxOf(taken.flatMap(b => [{x: b.x, y: b.y}, {x: b.x + b.w, y: b.y + b.h}]));
+  if (!ref) { const v = viewCenter(); return {x: v.x - w / 2, y: v.y - h / 2}; }
+  // rings of eight directions around the reference, preferring spots still on screen
+  const free = c => !taken.some(b => hits(c, b));
+  const view = viewRect(), cx = ref.x + ref.w / 2, cy = ref.y + ref.h / 2;
+  const stepX = ref.w / 2 + w / 2 + GAP, stepY = ref.h / 2 + h / 2 + GAP;
+  const spots = [];
+  for (let r = 1; r <= 5; r++) for (const [dx, dy] of RING)
+    spots.push({x: cx + dx * stepX * r - w / 2, y: cy + dy * stepY * r - h / 2, w, h});
+  const ok = spots.filter(free);
+  return ok.find(c => inView(c, view)) || ok[0] || {x: ref.x + ref.w + GAP, y: ref.y};
+}
+const specBox = spec => boxOf(spec.flatMap(([x, y, r]) => [{x: x - r, y: y - r}, {x: x + r, y: y + r}]));
+
+// ---------- component and protein menus ----------
+const PART_MENU = [
+  ['promoter', 'Promoter', '<path d="M5 17V7h11"/><path class="f" d="M13 3.5 20 7l-7 3.5z"/>'],
+  ['rbs', 'RBS', '<path class="f" d="M5 16a7 5 0 0 1 14 0z"/>'],
+  ['cds', 'CDS', '<path class="f" d="M3 6h12l5 5-5 5H3z"/>'],
+  ['terminator', 'Terminator', '<path d="M12 17V6M5 6h14"/>'],
+  ['origin', 'Origin', '<circle class="f" cx="12" cy="11" r="6.5"/>'],
+  ['misc', 'Other part', '<rect class="f" x="3" y="6" width="18" height="10" rx="2"/>'],
+];
+const PROT_MENU = [['custom', 'Draw custom'], ['blob', 'Blob'], ['bean', 'Bean'],
+                   ['groove', 'Groove'], ['rod', 'Elongated']];
+// each preset is a chain of discs given in world offsets, then snapped to the lattice
+const arc = (R, a0, a1, n, r) => Array.from({length: n}, (_, k) => {
+  const a = (a0 + (a1 - a0) * k / (n - 1)) * Math.PI / 180;
+  return [R * Math.cos(a), R * Math.sin(a), typeof r === 'function' ? r(k / (n - 1)) : r];
+});
+const PROT_SHAPES = {
+  blob:   [[0, 0, 54], [62, -14, 50]],
+  groove: arc(62, 58, 302, 7, 33),  // a C: the mouth is the groove
+  bean:   arc(130, 210, 330, 5, 40),                                   // a kidney
+  rod:    [[0, 0, 44], [62, 0, 38], [120, 0, 29], [170, 0, 18]],
+};
+// no two come out quite alike, and each takes the next colour in the cycle
+const PROT_TINTS = ['orange', 'teal', 'blue', 'grape', 'green', 'pink', 'cyan', 'yellow', 'indigo', 'red'];
+let protTint = 0;
+const jit = a => (Math.random() * 2 - 1) * a;
+function variedSpec(key) {
+  const spec = PROT_SHAPES[key] || PROT_SHAPES.blob, s = 1 + jit(0.08);
+  const a = key === 'groove' ? 4 : 9;  // a groove's mouth is narrow; too much wander closes it
+  return spec.map(([dx, dy, r]) => [dx * s + jit(a), dy * s + jit(a), Math.max(12, r * s + jit(r * 0.07))]);
+}
+function newProteinPreset(c, key) {
+  pushHistory();
+  const spec = variedSpec(key);
+  const O = W(c);
+  const b = {id: nextBid++, color: OC[PROT_TINTS[protTint++ % PROT_TINTS.length]][2],
+    next: spec.length + 1, rot: 0,
+    nodes: spec.map(([dx, dy, r], k) => ({id: k + 1, ...nearest(O.x + dx, O.y + dy), r: Math.round(r), parent: k ? k : null}))};
+  blobs.push(b);
+  zAdd('b:' + b.id);
+  clearSel();
+  selBlob = b.id; selBlobNode = null;
+  touch('b', b.id);
+  return b;
+}
+const partsPop = document.getElementById('partsPop'), protPop = document.getElementById('protPop');
+const mrow = ([k, label, icon]) => `<div class="mrow" data-k="${k}"><svg viewBox="0 0 24 24">${icon}</svg>${label}</div>`;
+partsPop.innerHTML =
+  `<div class="mrow" data-k="plasmid"><svg viewBox="0 0 24 24"><rect x="2.5" y="7.5" width="19" height="9" rx="3"/></svg>Plasmid</div>` +
+  PART_MENU.map(mrow).join('');
+// trace a preset the same way the canvas does, then fit it to the icon box
+function presetIcon(key, filled) {
+  const spec = PROT_SHAPES[key] || PROT_SHAPES.blob;
+  const nodes = spec.map(([dx, dy, r], k) => ({id: k + 1, ...nearest(dx, dy), r, parent: k ? k : null}));
+  const g = blobPath({id: -1, nodes});
+  const loop = (g.outline || []).slice().sort((a, b) => b.length - a.length)[0];
+  if (!loop) return '';
+  const bb = boxOf(loop), s = Math.min(22 / bb.w, 22 / bb.h);
+  const d = loop.map((q, i) => (i ? 'L' : 'M') + f(12 + (q.x - bb.x - bb.w / 2) * s) + ' ' + f(12 + (q.y - bb.y - bb.h / 2) * s)).join(' ') + ' Z';
+  return `<path d="${d}"${filled ? ' class="f"' : ' stroke-width="1.8"'}/>`;
+}
+let protBuilt = false;
+function buildProtMenu() {
+  if (protBuilt) return;
+  protBuilt = true;
+  protPop.innerHTML = PROT_MENU.map(([k, label]) =>
+    mrow([k, label, presetIcon(k === 'custom' ? 'blob' : k, k !== 'custom')])).join('');
+}
+function openMenu(pop, btn) {
+  const open = pop.style.display === 'block';
+  closeMenus();
+  if (!open) { pop.style.display = 'block'; placeUnder(pop, btn); }
+}
+function closeMenus() {
+  partsPop.style.display = 'none'; protPop.style.display = 'none';
+  pop.style.display = 'none'; exportMenu.style.display = 'none';
+}
+document.getElementById('partsBtn').onclick = () => openMenu(partsPop, document.getElementById('partsBtn'));
+partsPop.addEventListener('click', e => {
+  const r = e.target.closest('.mrow');
+  if (!r) return;
+  partsPop.style.display = 'none';
+  if (drawing) finishDraw(); if (pdraw) finishProtein();
+  mode = 'select';
+  if (r.dataset.k === 'plasmid') {
+    const s = freeSpot(304, 128);
+    newPlasmidAt(nearest(s.x + 12, s.y + 12));
+  } else {
+    const probe = {type: r.dataset.k, sc: 1, label: (PARTS[r.dataset.k] || {}).label};
+    const lb = partBox(probe), s = freeSpot(lb.w, lb.h);
+    newPartAt({x: s.x + lb.w / 2, y: s.y - lb.y}, r.dataset.k);
+  }
+  render();
+});
+protPop.addEventListener('click', e => {
+  const r = e.target.closest('.mrow');
+  if (!r) return;
+  protPop.style.display = 'none';
+  if (r.dataset.k === 'custom') { setMode('protein'); return; }
+  if (drawing) finishDraw(); if (pdraw) finishProtein();
+  mode = 'select';
+  const bb = specBox(PROT_SHAPES[r.dataset.k] || PROT_SHAPES.blob);
+  const s = freeSpot(bb.w, bb.h);
+  newProteinPreset(nearest(s.x - bb.x, s.y - bb.y), r.dataset.k);
+  render();
+});
+
+// ---------- in-place labels ----------
+// Typing goes straight onto the shape: no input box, just the text being drawn and
+// a caret that sits wherever the click landed.
+let editing = null;
+function labelOf(target) {
+  if (target.kind === 'p') { const pt = partById(target.id); return pt ? (pt.label || '') : ''; }
+  const q = byId(target.id);
+  return q ? (q.name || '') : '';
+}
+function setLabel(target, v) {
+  if (target.kind === 'p') { const pt = partById(target.id); if (pt) pt.label = v; }
+  else { const q = byId(target.id); if (q) q.name = v; }
+}
+// where the label sits, and how big, in the object's own frame
+function labelSpot(target) {
+  if (target.kind === 'p') {
+    const pt = partById(target.id);
+    return pt && {at: partLabelPos(pt), size: partFontSize(pt), flip: labelFlipped(pt)};
+  }
+  const q = byId(target.id);
+  return q && {at: plasmidCenter(q), size: 14, flip: false};
+}
+// the caret index nearest a horizontal offset from the middle of the text
+function caretAt(text, size, dx) {
+  const w = measureText(text, size);
+  const want = dx + w / 2;
+  let best = 0, bd = Infinity;
+  for (let i = 0; i <= text.length; i++) {
+    const d = Math.abs(measureText(text.slice(0, i), size) - want);
+    if (d < bd) { bd = d; best = i; }
+  }
+  return best;
+}
+function editLabel(target, world) {
+  if (target.kind === 'p' && !hasLabel(partById(target.id) || {})) return;
+  commitLabel(true);
+  const text = labelOf(target), sp = labelSpot(target);
+  let caret = text.length;
+  if (world && sp) {  // put the caret under the pointer, and select nothing
+    const pt = target.kind === 'p' ? partById(target.id) : byId(target.id);
+    const loc = target.kind === 'p' ? partLocal(pt, world) : toLocal(pt, world);
+    const dx = (loc.x - sp.at.x) * (sp.flip ? -1 : 1);
+    caret = caretAt(text, sp.size, dx);
+  }
+  editing = {...target, before: text, caret, sel: null};
+  render();
+}
+function commitLabel(keep) {
+  if (!editing) return;
+  const e = editing;
+  editing = null;
+  if (!keep) setLabel(e, e.before);
+  else if (labelOf(e) !== e.before) {
+    const now = labelOf(e);
+    setLabel(e, e.before);
+    pushHistory();
+    setLabel(e, now);
+  }
+  render();
+}
+const wordStart = (s, i) => { let k = i; while (k > 0 && /\s/.test(s[k - 1])) k--; while (k > 0 && !/\s/.test(s[k - 1])) k--; return k; };
+const MODKEYS = ['Control', 'Meta', 'Alt', 'Shift', 'CapsLock'];
+function editKey(ev) {
+  if (!editing) return false;
+  if (MODKEYS.includes(ev.key)) return false;  // a modifier on its own is not a keystroke
+  const s = labelOf(editing);
+  let c = Math.max(0, Math.min(editing.caret, s.length));
+  const range = editing.sel && editing.sel[0] !== editing.sel[1] ? editing.sel : null;
+  const put = (v, at) => { setLabel(editing, v); editing.caret = at; editing.sel = null; render(); };
+  const move = at => { editing.caret = at; editing.sel = null; render(); };
+  const dropSel = () => range ? {v: s.slice(0, range[0]) + s.slice(range[1]), at: range[0]} : null;
+
+  // Cmd is the platform's own: Cmd-A selects the text, anything else leaves the edit
+  if (ev.metaKey && !ev.ctrlKey) {
+    if (ev.key.toLowerCase() === 'a') { ev.preventDefault(); editing.sel = [0, s.length]; editing.caret = s.length; render(); return true; }
+    commitLabel(true);
+    return false;
+  }
+  if (ev.ctrlKey) {  // readline moves, on Ctrl only
+    const map = {a: 'home', e: 'end', b: 'left', f: 'right', d: 'del', h: 'back', k: 'kill', u: 'unix', w: 'word'};
+    const act = map[ev.key.toLowerCase()];
+    if (!act) { commitLabel(true); return false; }   // anything else (undo, say) ends the edit
+    ev.preventDefault();
+    if (act === 'home') move(0);
+    else if (act === 'end') move(s.length);
+    else if (act === 'left') move(Math.max(0, c - 1));
+    else if (act === 'right') move(Math.min(s.length, c + 1));
+    else if (act === 'del') { const d = dropSel(); d ? put(d.v, d.at) : put(s.slice(0, c) + s.slice(c + 1), c); }
+    else if (act === 'back') { const d = dropSel(); d ? put(d.v, d.at) : put(s.slice(0, Math.max(0, c - 1)) + s.slice(c), Math.max(0, c - 1)); }
+    else if (act === 'kill') put(s.slice(0, c), c);
+    else if (act === 'unix') put(s.slice(c), 0);
+    else if (act === 'word') { const w = wordStart(s, c); put(s.slice(0, w) + s.slice(c), w); }
+    return true;
+  }
+  if (ev.key === 'Enter' || ev.key === 'Escape') { ev.preventDefault(); commitLabel(ev.key === 'Enter'); return true; }
+  if (ev.key === 'Backspace') {
+    ev.preventDefault();
+    const d = dropSel();
+    if (d) put(d.v, d.at); else if (c) put(s.slice(0, c - 1) + s.slice(c), c - 1);
+    return true;
+  }
+  if (ev.key === 'Delete') {
+    ev.preventDefault();
+    const d = dropSel();
+    d ? put(d.v, d.at) : put(s.slice(0, c) + s.slice(c + 1), c);
+    return true;
+  }
+  if (ev.key === 'ArrowLeft') { ev.preventDefault(); move(range ? range[0] : Math.max(0, c - 1)); return true; }
+  if (ev.key === 'ArrowRight') { ev.preventDefault(); move(range ? range[1] : Math.min(s.length, c + 1)); return true; }
+  if (ev.key === 'Home') { ev.preventDefault(); move(0); return true; }
+  if (ev.key === 'End') { ev.preventDefault(); move(s.length); return true; }
+  if (ev.key.length === 1) {
+    ev.preventDefault();
+    const d = dropSel();
+    d ? put(d.v.slice(0, d.at) + ev.key + d.v.slice(d.at), d.at + 1) : put(s.slice(0, c) + ev.key + s.slice(c), c + 1);
+    return true;
+  }
+  return ev.key !== 'Tab';
+}
+// the caret, drawn at its index within the centred text
+function drawCaret(gp, text, size, pos, color, idx, flip, range) {
+  const w = measureText(text, size), h = size * 0.92;
+  const at = i => { const off = measureText(text.slice(0, Math.max(0, Math.min(i, text.length))), size) - w / 2; return pos.x + (flip ? -off : off); };
+  if (range && range[0] !== range[1]) {
+    const a = at(range[0]), b = at(range[1]);
+    gp.rect(Math.abs(b - a), h * 1.25).move(Math.min(a, b), pos.y - h * 0.625).fill({color: ACC, opacity: .2});
+  }
+  const x = at(idx);
+  gp.line(x, pos.y - h / 2, x, pos.y + h / 2).stroke({color, width: Math.max(1, size / 10), linecap: 'round'});
+}
+
 // ---------- color ----------
 const pop = document.getElementById('pop'), swatch = document.getElementById('swatch');
 let lastColor = DEFAULT_COLOR;
 const baseOf = c => Object.keys(OC).find(k => OC[k].includes(c));
 function currentColor() {
+  if (selPart != null && partById(selPart)) return partById(selPart).color || partDef(partById(selPart)).col();
   if (selBlob != null && blobById(selBlob)) return blobById(selBlob).color;
   const qs = selStrands();
   return qs.length ? qs[0].color : lastColor;
 }
 const hexOut = document.getElementById('hexOut');
+const baseRowEl = document.getElementById('baseRow'), shadeRowEl = document.getElementById('shadeRow');
+let shadeBase;
+const swHTML = c => `<button class="sw" style="background:${c}" data-color="${c}" title="${c}"></button>`;
+const markRow = (row, cur) => [...row.children].forEach(b => b.classList.toggle('on', b.dataset.color === cur));
 function buildColors() {
   const cur = currentColor(), base = baseOf(cur);
   hexOut.textContent = cur;
-  const sw = (c, on) => `<button class="sw${on ? ' on' : ''}" style="background:${c}" data-color="${c}" title="${c}"></button>`;
-  document.getElementById('baseRow').innerHTML = sw(BLACK, cur === BLACK) + Object.keys(OC).map(k => sw(OC[k][6], base === k)).join('');
-  document.getElementById('shadeRow').innerHTML = base ? SHADES.map(i => sw(OC[base][i], cur === OC[base][i])).join('') : '';
+  if (!baseRowEl.children.length)
+    baseRowEl.innerHTML = swHTML(BLACK) + Object.keys(OC).map(k => swHTML(OC[k][6])).join('');
+  [...baseRowEl.children].forEach(b => b.classList.toggle('on',
+    b.dataset.color === BLACK ? cur === BLACK : baseOf(b.dataset.color) === base));
+  if (base !== shadeBase) {  // only the row that was not clicked is ever rebuilt
+    shadeBase = base;
+    shadeRowEl.innerHTML = base ? SHADES.map(i => swHTML(OC[base][i])).join('') : '';
+  }
+  markRow(shadeRowEl, cur);
 }
 function placeUnder(menu, btn) {
   const r = btn.getBoundingClientRect();
@@ -1623,9 +2265,8 @@ function placeUnder(menu, btn) {
 }
 swatch.onclick = () => {
   const open = pop.style.display === 'flex';
-  exportMenu.style.display = 'none';
-  pop.style.display = open ? 'none' : 'flex';
-  if (!open) { buildColors(); placeUnder(pop, swatch); }
+  closeMenus();
+  if (!open) { pop.style.display = 'flex'; buildColors(); placeUnder(pop, swatch); }
 };
 pop.addEventListener('mouseover', e => {
   const b = e.target.closest('.sw');
@@ -1637,23 +2278,27 @@ pop.addEventListener('click', e => {
   if (!b) return;
   const c = b.dataset.color;
   lastColor = c;
-  if (selBlob != null) { pushHistory(); blobById(selBlob).color = c; }
+  if (selPart != null) { pushHistory(); partById(selPart).color = c; }
+  else if (selBlob != null) { pushHistory(); blobById(selBlob).color = c; }
   else if (sel.size) { pushHistory(); selStrands().forEach(q => q.color = c); }
+  const wasOpen = pop.style.display;
   render();
+  pop.style.display = wasOpen;  // keep picking: a hue, then a shade, then another
   buildColors();
 });
 
 // ---------- export ----------
-const anySel = () => sel.size || selBlob != null || selImport != null;
+const anySel = () => sel.size || selBlob != null || selImport != null || selPart != null;
 const exportIds = () => ({
   ids: (sel.size ? [...sel] : (anySel() ? [] : strands.map(q => q.id))).filter(id => byId(id) && byId(id).nodes.length > 1),
   bids: selBlob != null ? [selBlob] : (anySel() ? [] : blobs.map(b => b.id)),
   mids: selImport != null ? imports.filter(m => m.id === selImport) : (anySel() ? [] : imports),
+  pids: selPart != null ? parts.filter(x => x.id === selPart) : (anySel() ? [] : parts),
 });
 function buildSVG() {
-  const {ids, bids, mids} = exportIds();
-  if (!ids.length && !bids.length && !mids.length) return null;
-  const b = bounds(ids, bids, mids), pad = cfg.w + 6;
+  const {ids, bids, mids, pids} = exportIds();
+  if (!ids.length && !bids.length && !mids.length && !pids.length) return null;
+  const b = bounds(ids, bids, mids, pids), pad = cfg.w + 6;
   const x = f(b.x - pad), y = f(b.y - pad), w = f(b.w + 2 * pad), h = f(b.h + 2 * pad);
   const txt = (t, p, c) => `<text x="${f(p.x)}" y="${f(p.y)}" fill="${c}" stroke="none" font-family="system-ui, sans-serif" font-size="11" font-weight="600" text-anchor="middle" dominant-baseline="central">${t}</text>`;
   const one = q => {
@@ -1661,7 +2306,10 @@ function buildSVG() {
     const t = g.ticks.map(([a, c]) => `<line x1="${f(a.x)}" y1="${f(a.y)}" x2="${f(c.x)}" y2="${f(c.y)}"/>`).join('');
     const l = g.lab ? txt('5′', g.lab.p5, q.color) + txt('3′', g.lab.p3, q.color) : '';
     const pv = blobPivot(q), rt = q.rot ? ` transform="rotate(${f(q.rot)} ${f(pv.x)} ${f(pv.y)})"` : '';
-    return `<g id="strand-${q.id}" stroke="${q.color}"${rt}><g stroke-width="${cfg.tw}">${t}</g><path d="${g.d}" stroke-width="${cfg.w}" stroke-linecap="round" stroke-linejoin="round"/>${l}</g>`;
+    const nm = q.plasmid && q.name
+      ? (c => `<text x="${f(c.x)}" y="${f(c.y)}" fill="${mix(q.color, '#000000', .1)}" stroke="none" font-family="system-ui, sans-serif" font-size="14" font-weight="500" text-anchor="middle" dominant-baseline="central">${esc(q.name)}</text>`)(plasmidCenter(q))
+      : '';
+    return `<g id="strand-${q.id}" stroke="${q.color}"${rt}>${nm}<g stroke-width="${cfg.tw}">${t}</g><path d="${g.d}" stroke-width="${cfg.w}" stroke-linecap="round" stroke-linejoin="round"/>${l}</g>`;
   };
   let defs = '', blobBody = '';
   for (const m of mids) blobBody += `<image href="${m.src}" x="${f(m.x)}" y="${f(m.y)}" width="${f(m.w)}" height="${f(m.h)}"` +
@@ -1682,14 +2330,21 @@ function buildSVG() {
     v: 1,
     strands: strands.filter(q => ids.includes(q.id)),
     blobs: blobs.filter(b => bids.includes(b.id)),
+    parts: pids,
   });
+  let partBody = '';
+  for (const pt of pids) {
+    const A = partAnchor(pt), piv = partPivot(pt);
+    const rt = pt.rot ? ` rotate(${f(pt.rot)} ${f(piv.x - A.x)} ${f(piv.y - A.y)})` : '';
+    partBody += `<g id="part-${pt.id}" transform="translate(${f(A.x)} ${f(A.y)})${rt}">${partSVG(pt)}</g>\n`;
+  }
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x} ${y} ${w} ${h}" width="${w}" height="${h}">
 <metadata id="ligature-model">${esc(model)}</metadata>
 <defs>${defs}</defs>
 ${blobBody}<g fill="none">
 ${body}
 </g>
-</svg>`;
+${partBody}</svg>`;
   return {svg, w, h};
 }
 
@@ -1735,8 +2390,8 @@ function exText(t, p, color) {
   };
 }
 function buildExcalidraw() {
-  const {ids, bids} = exportIds();  // placed files stay out of the Excalidraw conversion
-  if (!ids.length && !bids.length) return null;
+  const {ids, bids, pids} = exportIds();  // placed files stay out of the Excalidraw conversion
+  if (!ids.length && !bids.length && !pids.length) return null;
   const elements = [];
   for (const id of bids) {
     const g = BP.get(id), bb = blobById(id), col = bb.color;
@@ -1759,6 +2414,26 @@ function buildExcalidraw() {
     if (g.lab) {
       elements.push(exText('5′', toWorld(q, g.lab.p5), q.color));
       elements.push(exText('3′', toWorld(q, g.lab.p3), q.color));
+    }
+  }
+  for (const pt of pids) {
+    const A = partAnchor(pt), piv = partPivot(pt), rot = pt.rot || 0, gid = [rid()];
+    const wp = (x, y) => { const q = rotPt({x: A.x + x, y: A.y + y}, piv, rot); return [q.x, q.y]; };
+    for (const sh of partShapes(pt)) {
+      const closed = /z\s*$/i.test(sh.d);
+      for (const pts of samplePath(sh.d)) {
+        const out = pts.map(([x, y]) => wp(x, y));
+        if (closed) out.push(out[0]);
+        elements.push(exEl(out, {
+          stroke: sh.stroke === 'none' ? sh.fill : sh.stroke,
+          bg: sh.fill === 'none' ? 'transparent' : sh.fill,
+          sw: sh.sw || 1, groupIds: gid,
+        }));
+      }
+    }
+    if (pt.label) {
+      const L = partLabelPos(pt), w = wp(L.x, L.y);
+      elements.push(exText(pt.label, {x: w[0], y: w[1]}, mix(pt.color || partDef(pt).col(), '#000000', .45)));
     }
   }
   return elements;
@@ -1785,9 +2460,8 @@ function download(blob, name) {
 const exportMenu = document.getElementById('exportMenu');
 document.getElementById('export').onclick = () => {
   const open = exportMenu.style.display === 'flex';
-  pop.style.display = 'none';
-  exportMenu.style.display = open ? 'none' : 'flex';
-  if (!open) placeUnder(exportMenu, document.getElementById('export'));
+  closeMenus();
+  if (!open) { exportMenu.style.display = 'flex'; placeUnder(exportMenu, document.getElementById('export')); }
 };
 exportMenu.addEventListener('click', async e => {
   const b = e.target.closest('button');
@@ -1852,6 +2526,7 @@ function svgSize(root) {
 function importModel(json) {
   const data = JSON.parse(json);
   if (!Array.isArray(data.strands) || !Array.isArray(data.blobs)) throw new Error('no model');
+  const dParts = Array.isArray(data.parts) ? data.parts : [];
   pushHistory();
   clearSel();
   const idmap = new Map();
@@ -1873,9 +2548,15 @@ function importModel(json) {
     selBlob = n.id;
     selBlobNode = null;
   }
-  if (selBlob != null) sel.clear();
+  for (const pt of dParts) {
+    const n = {...pt, id: nextPartId++};
+    parts.push(n);
+    zAdd('p:' + n.id);
+    selPart = n.id;
+  }
+  if (selBlob != null || selPart != null) sel.clear();
   render();
-  return (data.strands.length + data.blobs.length) + ' objects';
+  return (data.strands.length + data.blobs.length + dParts.length) + ' objects';
 }
 function addImport(name, txt) {
   let svg, w, h;
@@ -1934,9 +2615,11 @@ function toast(msg) {
   clearTimeout(toastT); toastT = setTimeout(() => toastEl.style.opacity = 0, 1800);
 }
 document.addEventListener('click', e => {
-  if (bar.contains(e.target) || pop.contains(e.target) || exportMenu.contains(e.target) || layersEl.contains(e.target)) return;
-  pop.style.display = 'none';
-  exportMenu.style.display = 'none';
+  const path = e.composedPath ? e.composedPath() : [e.target];
+  const inside = el => path.includes(el) || el.contains(e.target);
+  if (inside(bar) || inside(pop) || inside(exportMenu) || inside(layersEl)
+    || inside(partsPop) || inside(protPop)) return;
+  closeMenus();
   if (layersOpen) { layersOpen = false; render(); }
 });
 setVB();
